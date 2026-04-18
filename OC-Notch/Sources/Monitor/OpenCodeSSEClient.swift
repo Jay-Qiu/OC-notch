@@ -154,7 +154,47 @@ actor OpenCodeSSEClient {
         }
     }
 
-    // MARK: - JSON → Model Helpers
+    // MARK: - JSON → Model Helpers (static for REST polling)
+
+    static func parsePermissionFromREST(_ dict: [String: Any]) -> OCPermissionRequest {
+        let metadataRaw = dict["metadata"] as? [String: Any] ?? [:]
+        let metadata = metadataRaw.compactMapValues { "\($0)" }
+
+        return OCPermissionRequest(
+            id: dict["id"] as? String ?? "",
+            sessionID: dict["sessionID"] as? String ?? "",
+            permission: dict["permission"] as? String ?? "",
+            patterns: dict["patterns"] as? [String] ?? [],
+            metadata: metadata,
+            always: dict["always"] as? [String] ?? []
+        )
+    }
+
+    static func parseQuestionFromREST(_ dict: [String: Any]) -> OCQuestionRequest {
+        let questionsArray = dict["questions"] as? [[String: Any]] ?? []
+        let questions = questionsArray.map { q in
+            let options = (q["options"] as? [[String: Any]] ?? []).map { o in
+                OCQuestionOption(
+                    label: o["label"] as? String ?? "",
+                    description: o["description"] as? String ?? ""
+                )
+            }
+            return OCQuestionInfo(
+                question: q["question"] as? String ?? "",
+                header: q["header"] as? String ?? "",
+                options: options,
+                multiple: q["multiple"] as? Bool ?? false,
+                custom: q["custom"] as? Bool ?? true
+            )
+        }
+        return OCQuestionRequest(
+            id: dict["id"] as? String ?? "",
+            sessionID: dict["sessionID"] as? String ?? "",
+            questions: questions
+        )
+    }
+
+    // MARK: - JSON → Model Helpers (instance)
 
     private func parseSession(_ dict: [String: Any]) -> OCSession {
         let timeDict = dict["time"] as? [String: Any] ?? [:]

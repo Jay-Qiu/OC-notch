@@ -171,6 +171,23 @@ final class SessionMonitorService {
         } else {
             activeSessions = []
         }
+
+        await pollPermissionsAndQuestions()
+    }
+
+    // MARK: - REST Polling (Permissions & Questions)
+
+    private func pollPermissionsAndQuestions() async {
+        var allPermissions: [OCPermissionRequest] = []
+        var allQuestions: [OCQuestionRequest] = []
+
+        for httpClient in httpClients.values {
+            allPermissions += await httpClient.listPermissions()
+            allQuestions += await httpClient.listQuestions()
+        }
+
+        pendingPermissions = allPermissions
+        pendingQuestions = allQuestions
     }
 
     // MARK: - Completion Handling

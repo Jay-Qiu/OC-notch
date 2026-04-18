@@ -45,6 +45,30 @@ actor OpenCodeHTTPClient {
 
     // MARK: - Permission Reply
 
+    func listPermissions() async -> [OCPermissionRequest] {
+        let url = instance.baseURL.appendingPathComponent("permission")
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return [] }
+            return dicts.map { OpenCodeSSEClient.parsePermissionFromREST($0) }
+        } catch {
+            return []
+        }
+    }
+
+    func listQuestions() async -> [OCQuestionRequest] {
+        let url = instance.baseURL.appendingPathComponent("question")
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return [] }
+            return dicts.map { OpenCodeSSEClient.parseQuestionFromREST($0) }
+        } catch {
+            return []
+        }
+    }
+
     /// Reply to a permission request.
     /// The reply mechanism uses SSE or a specific endpoint. Based on the OpenAPI spec,
     /// permission replies go through the event system. We may need to find the correct
