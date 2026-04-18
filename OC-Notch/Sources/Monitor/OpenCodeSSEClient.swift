@@ -222,16 +222,7 @@ actor OpenCodeSSEClient {
     }
 
     private func parseSessionStatus(_ dict: [String: Any]) -> OCSessionStatus {
-        switch dict["type"] as? String {
-        case "busy": return .busy
-        case "retry":
-            return .retry(
-                attempt: dict["attempt"] as? Int ?? 0,
-                message: dict["message"] as? String ?? "",
-                next: Date(timeIntervalSince1970: (dict["next"] as? Double ?? 0) / 1000)
-            )
-        default: return .idle
-        }
+        OpenCodeHTTPClient.parseSessionStatus(dict)
     }
 
     private func parsePermissionRequest(_ dict: [String: Any]) -> OCPermissionRequest {

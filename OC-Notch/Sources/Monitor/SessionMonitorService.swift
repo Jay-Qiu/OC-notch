@@ -155,6 +155,15 @@ final class SessionMonitorService {
                     }
                 }
 
+                // Seed initial session statuses from the HTTP API so we don't miss
+                // sessions that were already busy before the SSE connection started.
+                let statuses = await httpClient.getSessionStatuses()
+                for (sessionID, status) in statuses {
+                    if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
+                        activeSessions[index].status = status
+                    }
+                }
+
                 logger.notice("Connected to OpenCode instance: \(instance.baseURL)")
             }
         }
@@ -174,9 +183,17 @@ final class SessionMonitorService {
             let sqliteSessionIDs = Set(sqliteSessions.map(\.id))
             let busyIDs = await sqliteReader.readBusySessionIDs(activeSessionIDs: sqliteSessionIDs)
 
+            var httpStatuses: [String: OCSessionStatus] = [:]
+            for httpClient in httpClients.values {
+                let statuses = await httpClient.getSessionStatuses()
+                httpStatuses.merge(statuses) { _, new in new }
+            }
+
             var merged: [OCSession] = []
             for var session in sqliteSessions {
-                if let existing = activeSessions.first(where: { $0.id == session.id }) {
+                if let httpStatus = httpStatuses[session.id] {
+                    session.status = httpStatus
+                } else if let existing = activeSessions.first(where: { $0.id == session.id }) {
                     session.status = existing.status
                 } else if busyIDs.contains(session.id) {
                     session.status = .busy
