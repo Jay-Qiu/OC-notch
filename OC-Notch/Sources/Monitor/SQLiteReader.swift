@@ -93,9 +93,12 @@ actor SQLiteReader {
 
     // MARK: - Activity Detection
 
-    func readBusySessionIDs() -> Set<String> {
+    func readBusySessionIDs(activeSessionIDs: Set<String>) -> Set<String> {
+        guard activeSessionIDs.isEmpty == false else { return [] }
         guard let db = openDB() else { return [] }
         defer { sqlite3_close(db) }
+
+        let placeholders = activeSessionIDs.map { _ in "?" }.joined(separator: ", ")
 
         let sql = """
             SELECT session_id
@@ -104,6 +107,7 @@ actor SQLiteReader {
                        json_extract(data, '$.type') as ptype,
                        ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY time_updated DESC) as rn
                 FROM part
+                WHERE session_id IN (\(placeholders))
             )
             WHERE rn = 1 AND ptype != 'step-finish'
             """
@@ -111,6 +115,11 @@ actor SQLiteReader {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
         defer { sqlite3_finalize(stmt) }
+
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        for (index, id) in activeSessionIDs.enumerated() {
+            sqlite3_bind_text(stmt, Int32(index + 1), id, -1, SQLITE_TRANSIENT)
+        }
 
         var ids = Set<String>()
         while sqlite3_step(stmt) == SQLITE_ROW {

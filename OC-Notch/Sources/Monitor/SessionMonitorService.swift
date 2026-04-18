@@ -151,18 +151,12 @@ final class SessionMonitorService {
         logger.notice("Active directories: \(dirs)")
         if dirs.isEmpty == false {
             let sqliteSessions = await sqliteReader.readSessions(directories: dirs)
-            let busyIDs = await sqliteReader.readBusySessionIDs()
-            logger.notice("SQLite returned \(sqliteSessions.count) sessions (was \(self.activeSessions.count)), \(busyIDs.count) busy")
+            logger.notice("SQLite returned \(sqliteSessions.count) sessions (was \(self.activeSessions.count))")
 
             var merged: [OCSession] = []
             for var session in sqliteSessions {
                 if let existing = activeSessions.first(where: { $0.id == session.id }) {
                     session.status = existing.status
-                }
-                if busyIDs.contains(session.id) {
-                    session.status = .busy
-                } else if session.status == .busy {
-                    session.status = .idle
                 }
                 merged.append(session)
                 completionDetector.trackSession(id: session.id, title: session.title)
@@ -290,20 +284,10 @@ final class SessionMonitorService {
                 reportCompletion(completion, sessionID: sessionID)
             }
 
-        case .messagePartUpdated(let sessionID, let part):
-            // Track tool execution state for session status
-            if part.type == "tool" {
-                switch part.state {
-                case .running:
-                    if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
-                        activeSessions[index].status = .busy
-                        // Track busy state in detector for idle transition detection
-                        _ = completionDetector.checkIdleTransition(sessionID: sessionID, newStatus: .busy)
-                    }
-                default:
-                    break
-                }
-            }
+        case .messagePartUpdated:
+            // Session busy/idle is driven exclusively by session.status SSE events.
+            // Individual tool execution states are not reliable indicators of prompt computation.
+            break
 
         case .unknown(let type):
             logger.debug("Unknown event type: \(type)")
