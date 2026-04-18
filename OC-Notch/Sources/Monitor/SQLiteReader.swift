@@ -91,6 +91,34 @@ actor SQLiteReader {
         return sessions
     }
 
+    // MARK: - Activity Detection
+
+    func readBusySessionIDs() -> Set<String> {
+        guard let db = openDB() else { return [] }
+        defer { sqlite3_close(db) }
+
+        let sql = """
+            SELECT session_id
+            FROM (
+                SELECT session_id,
+                       json_extract(data, '$.type') as ptype,
+                       ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY time_updated DESC) as rn
+                FROM part
+            )
+            WHERE rn = 1 AND ptype != 'step-finish'
+            """
+
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+
+        var ids = Set<String>()
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            ids.insert(String(cString: sqlite3_column_text(stmt, 0)))
+        }
+        return ids
+    }
+
     // MARK: - Todos
 
     /// Read todos for a specific session.
