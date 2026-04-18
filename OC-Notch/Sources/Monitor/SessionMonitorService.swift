@@ -157,10 +157,11 @@ final class SessionMonitorService {
 
                 // Seed initial session statuses from the HTTP API so we don't miss
                 // sessions that were already busy before the SSE connection started.
-                let statuses = await httpClient.getSessionStatuses()
-                for (sessionID, status) in statuses {
-                    if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
-                        activeSessions[index].status = status
+                if let statuses = await httpClient.getSessionStatuses() {
+                    for (sessionID, status) in statuses {
+                        if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
+                            activeSessions[index].status = status
+                        }
                     }
                 }
 
@@ -184,15 +185,24 @@ final class SessionMonitorService {
             let busyIDs = await sqliteReader.readBusySessionIDs(activeSessionIDs: sqliteSessionIDs)
 
             var httpStatuses: [String: OCSessionStatus] = [:]
+            var httpResponded = false
             for httpClient in httpClients.values {
-                let statuses = await httpClient.getSessionStatuses()
-                httpStatuses.merge(statuses) { _, new in new }
+                if let statuses = await httpClient.getSessionStatuses() {
+                    httpResponded = true
+                    httpStatuses.merge(statuses) { _, new in new }
+                }
             }
 
             var merged: [OCSession] = []
             for var session in sqliteSessions {
                 if let httpStatus = httpStatuses[session.id] {
                     session.status = httpStatus
+                } else if httpResponded {
+                    // HTTP endpoint responded but didn't include this session —
+                    // it's not busy/retry. Use SQLite as fallback, default to idle.
+                    if busyIDs.contains(session.id) {
+                        session.status = .busy
+                    }
                 } else if let existing = activeSessions.first(where: { $0.id == session.id }) {
                     session.status = existing.status
                 } else if busyIDs.contains(session.id) {

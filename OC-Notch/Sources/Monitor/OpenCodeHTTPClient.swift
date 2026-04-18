@@ -30,12 +30,14 @@ actor OpenCodeHTTPClient {
 
     // MARK: - Sessions
 
-    func getSessionStatuses() async -> [String: OCSessionStatus] {
+    /// Returns session statuses from the HTTP API. Returns `nil` on request failure
+    /// (vs. an empty dictionary when the server responds with no busy sessions).
+    func getSessionStatuses() async -> [String: OCSessionStatus]? {
         let url = instance.baseURL.appendingPathComponent("session/status")
         do {
             let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [:] }
-            guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
 
             var result: [String: OCSessionStatus] = [:]
             for (sessionID, value) in dict {
@@ -46,7 +48,7 @@ actor OpenCodeHTTPClient {
             return result
         } catch {
             logger.error("Failed to get session statuses: \(error)")
-            return [:]
+            return nil
         }
     }
 
