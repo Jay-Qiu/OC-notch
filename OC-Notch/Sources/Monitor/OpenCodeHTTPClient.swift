@@ -30,6 +30,39 @@ actor OpenCodeHTTPClient {
 
     // MARK: - Sessions
 
+    func getSessionStatuses() async -> [String: OCSessionStatus] {
+        let url = instance.baseURL.appendingPathComponent("session/status")
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [:] }
+            guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
+
+            var result: [String: OCSessionStatus] = [:]
+            for (sessionID, value) in dict {
+                if let statusDict = value as? [String: Any] {
+                    result[sessionID] = Self.parseSessionStatus(statusDict)
+                }
+            }
+            return result
+        } catch {
+            logger.error("Failed to get session statuses: \(error)")
+            return [:]
+        }
+    }
+
+    static func parseSessionStatus(_ dict: [String: Any]) -> OCSessionStatus {
+        switch dict["type"] as? String {
+        case "busy": return .busy
+        case "retry":
+            return .retry(
+                attempt: dict["attempt"] as? Int ?? 0,
+                message: dict["message"] as? String ?? "",
+                next: Date(timeIntervalSince1970: (dict["next"] as? Double ?? 0) / 1000)
+            )
+        default: return .idle
+        }
+    }
+
     func listSessions() async -> [OCSession] {
         let url = instance.baseURL.appendingPathComponent("session")
         do {
