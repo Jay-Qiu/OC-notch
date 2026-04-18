@@ -55,7 +55,6 @@ final class AvatarScene: SKScene {
             textureCache[state] = PixelSpriteGenerator.generateTextures(for: state, size: size)
         }
 
-        // Start idle animation
         applyAnimation(for: .idle)
     }
 
@@ -77,11 +76,11 @@ final class AvatarScene: SKScene {
 
         guard let textures = textureCache[state], textures.isEmpty == false else { return }
 
-        // Ensure pixel-perfect rendering
         for texture in textures {
             texture.filteringMode = .nearest
         }
 
+        sprite.texture = textures[0]
         let animation = SKAction.animate(with: textures, timePerFrame: state.frameDuration)
         sprite.run(SKAction.repeatForever(animation))
     }

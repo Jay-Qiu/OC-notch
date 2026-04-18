@@ -40,7 +40,7 @@ final class SessionMonitorService {
         // Periodic rescan for new/removed instances
         scanTask = Task {
             while Task.isCancelled == false {
-                try? await Task.sleep(for: .seconds(10))
+                try? await Task.sleep(for: .seconds(3))
                 await scanForInstances()
             }
         }
@@ -136,12 +136,18 @@ final class SessionMonitorService {
         logger.notice("Active directories: \(dirs)")
         if dirs.isEmpty == false {
             let sqliteSessions = await sqliteReader.readSessions(directories: dirs)
-            logger.notice("SQLite returned \(sqliteSessions.count) sessions (was \(self.activeSessions.count))")
+            let busyIDs = await sqliteReader.readBusySessionIDs()
+            logger.notice("SQLite returned \(sqliteSessions.count) sessions (was \(self.activeSessions.count)), \(busyIDs.count) busy")
 
             var merged: [OCSession] = []
             for var session in sqliteSessions {
                 if let existing = activeSessions.first(where: { $0.id == session.id }) {
                     session.status = existing.status
+                }
+                if busyIDs.contains(session.id) {
+                    session.status = .busy
+                } else if session.status == .busy {
+                    session.status = .idle
                 }
                 merged.append(session)
                 completionDetector.trackSession(id: session.id, title: session.title)

@@ -34,8 +34,8 @@ final class AvatarStateManager {
         }
 
         if newState != currentState {
+            logger.notice("Avatar state \(String(describing: self.currentState)) → \(String(describing: newState))")
             currentState = newState
-            logger.debug("Avatar state → \(String(describing: newState))")
         }
     }
 
