@@ -136,18 +136,19 @@ final class SessionMonitorService {
         logger.notice("Active directories: \(dirs)")
         if dirs.isEmpty == false {
             let sqliteSessions = await sqliteReader.readSessions(directories: dirs)
-            logger.notice("SQLite returned \(sqliteSessions.count) sessions, activeSessions has \(self.activeSessions.count)")
-            for session in sqliteSessions {
-                if activeSessions.contains(where: { $0.id == session.id }) == false {
-                    activeSessions.append(session)
-                    completionDetector.trackSession(id: session.id, title: session.title)
-                    logger.notice("Added session: \(session.title) [\(session.directory)]")
+            logger.notice("SQLite returned \(sqliteSessions.count) sessions (was \(self.activeSessions.count))")
+
+            var merged: [OCSession] = []
+            for var session in sqliteSessions {
+                if let existing = activeSessions.first(where: { $0.id == session.id }) {
+                    session.status = existing.status
                 }
+                merged.append(session)
+                completionDetector.trackSession(id: session.id, title: session.title)
             }
-            let activeDirs = Set(dirs)
-            activeSessions.removeAll { session in
-                session.directory.isEmpty == false && activeDirs.contains(session.directory) == false
-            }
+            activeSessions = merged
+        } else {
+            activeSessions = []
         }
     }
 
