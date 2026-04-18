@@ -45,7 +45,7 @@ actor ProcessScanner {
         let pipe = Pipe()
 
         task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        task.arguments = ["-f", "opencode"]
+        task.arguments = ["-x", "opencode"]
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
 
@@ -60,9 +60,11 @@ actor ProcessScanner {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else { return [] }
 
+        let ownPID = ProcessInfo.processInfo.processIdentifier
         return output
             .split(separator: "\n")
             .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { $0 != ownPID }
     }
 
     /// Check if a process is listening on a TCP port using `lsof`.
@@ -70,8 +72,9 @@ actor ProcessScanner {
         let task = Process()
         let pipe = Pipe()
 
+        // Use -a to AND the filters: only show network files (-i) for this PID (-p)
         task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-        task.arguments = ["-i", "-P", "-n", "-p", "\(pid)"]
+        task.arguments = ["-a", "-i", "TCP", "-P", "-n", "-p", "\(pid)"]
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
 
@@ -85,17 +88,10 @@ actor ProcessScanner {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else { return nil }
 
-        // lsof with -i + -p uses OR semantics — filter lines by matching PID column
-        let pidStr = "\(pid)"
         for line in output.split(separator: "\n") {
             let lineStr = String(line)
             guard lineStr.contains("LISTEN") else { continue }
 
-            // Parse PID from second column: "opencode  39562 jquach ..."
-            let columns = lineStr.split(separator: " ", omittingEmptySubsequences: true)
-            guard columns.count >= 2, String(columns[1]) == pidStr else { continue }
-
-            // Extract port from "host:port (LISTEN)"
             if let portRange = lineStr.range(of: #":(\d+)\s+\(LISTEN\)"#, options: .regularExpression) {
                 let match = lineStr[portRange]
                 let portStr = match.split(separator: ":").last?.replacingOccurrences(of: " (LISTEN)", with: "") ?? ""

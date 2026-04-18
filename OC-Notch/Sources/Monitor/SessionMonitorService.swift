@@ -136,7 +136,9 @@ final class SessionMonitorService {
         }
 
         instances = discovered
-        opencodePIDCount = await processScanner.countProcesses()
+        let totalPIDs = await processScanner.countProcesses()
+        let serverCount = discovered.count
+        opencodePIDCount = max(totalPIDs - serverCount, 0)
     }
 
     // MARK: - Completion Handling
