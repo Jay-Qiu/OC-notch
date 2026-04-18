@@ -81,6 +81,21 @@ final class SessionMonitorService {
         }
     }
 
+    func replyQuestion(requestID: String, answers: [[String]]) async {
+        guard pendingQuestions.contains(where: { $0.id == requestID }) else { return }
+
+        if let httpClient = httpClients.values.first {
+            do {
+                try await httpClient.replyQuestion(requestID: requestID, answers: answers)
+                pendingQuestions.removeAll { $0.id == requestID }
+            } catch {
+                logger.error("Failed to reply question: \(error)")
+            }
+        } else {
+            logger.warning("No HTTP client available to reply to question \(requestID)")
+        }
+    }
+
     // MARK: - Instance Discovery
 
     private func scanForInstances() async {

@@ -85,6 +85,34 @@ actor OpenCodeHTTPClient {
 
         logger.notice("Permission \(requestID) replied: \(reply.rawValue)")
     }
+
+    // MARK: - Question Reply
+
+    func replyQuestion(requestID: String, answers: [[String]]) async throws {
+        let url = instance.baseURL
+            .appendingPathComponent("question")
+            .appendingPathComponent(requestID)
+            .appendingPathComponent("reply")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = ["answers": answers]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw HTTPError.invalidResponse
+        }
+
+        if http.statusCode >= 400 {
+            logger.error("Question reply failed: HTTP \(http.statusCode)")
+            throw HTTPError.serverError(statusCode: http.statusCode)
+        }
+
+        logger.notice("Question \(requestID) replied with \(answers.count) answers")
+    }
 }
 
 enum HTTPError: Error {

@@ -39,7 +39,7 @@ struct SessionDropdownView: View {
 
     private func sessionRow(_ session: OCSession) -> some View {
         Button {
-            TerminalLauncher.activateTerminal()
+            TerminalLauncher.activateTerminal(directory: session.directory)
             onDismiss()
         } label: {
             HStack(spacing: 8) {

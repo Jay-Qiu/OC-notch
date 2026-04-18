@@ -38,9 +38,16 @@ struct NotchShellView: View {
             syncPermissionQueue(newPerms)
         }
         .onChange(of: monitor.lastCompletion) { _, completion in
-            if let completion, notchState != .permission {
+            if let completion, notchState != .permission && notchState != .question {
                 notchState = .notification(completion)
             } else if completion == nil && notchState.isNotification {
+                notchState = .collapsed
+            }
+        }
+        .onChange(of: monitor.pendingQuestions) { _, newQuestions in
+            if newQuestions.isEmpty == false && notchState != .permission {
+                notchState = .question
+            } else if newQuestions.isEmpty && notchState == .question {
                 notchState = .collapsed
             }
         }
@@ -48,6 +55,7 @@ struct NotchShellView: View {
             avatarScene.setState(newState)
         }
         .onChange(of: monitor.pendingPermissions.count) { _, _ in updateAvatarState() }
+        .onChange(of: monitor.pendingQuestions.count) { _, _ in updateAvatarState() }
         .onChange(of: monitor.activeSessions) { _, _ in updateAvatarState() }
         .onChange(of: notchState) { _, newState in
             onExpandChange?(newState != .collapsed)
@@ -89,6 +97,10 @@ struct NotchShellView: View {
                     }
                 }
             }
+        case .question:
+            if let request = monitor.pendingQuestions.first {
+                QuestionRequestView(request: request)
+            }
         case .notification(let completion):
             TaskCompletionView(completion: completion)
         case .dropdown:
@@ -103,10 +115,9 @@ struct NotchShellView: View {
         case .dropdown:
             notchState = .collapsed
         case .collapsed, .notification:
-            // Dropdown allowed from collapsed or notification (replaces notification)
             notchState = .dropdown
-        case .permission:
-            // Permission takes priority — do not open dropdown
+        case .permission, .question:
+            // Permission/question takes priority — do not open dropdown
             break
         }
     }
@@ -196,6 +207,7 @@ struct NotchShellView: View {
 enum NotchState: Equatable {
     case collapsed
     case permission
+    case question
     case notification(TaskCompletionInfo)
     case dropdown
 

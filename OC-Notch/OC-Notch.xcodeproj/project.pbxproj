@@ -19,6 +19,7 @@
 		80DC96CE0E8B65A38F0460F8 /* CompletionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EA1DA258A9EB301192C124 /* CompletionDetector.swift */; };
 		8DB7914AD05601F1A67DE673 /* PixelSpriteGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF5210FA234215947EF9947 /* PixelSpriteGenerator.swift */; };
 		936745CB3EF985672B3B1D11 /* PermissionRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9C764163815D2D98E55B7 /* PermissionRequestView.swift */; };
+		43F1B91BF6328017805199B6 /* QuestionRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A099EADD002CAEFA1EA4E576 /* QuestionRequestView.swift */; };
 		A201F4BADD74EBF0390E221C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA5E4034816BB464B716254 /* Models.swift */; };
 		B8B936ECF0C5760BA664CD79 /* AvatarScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB89A4EA65170241F19BA916 /* AvatarScene.swift */; };
 		C2857CFD16CA87FCCCDA1B9C /* OCNotchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0BE59C240376664A13B92 /* OCNotchApp.swift */; };
@@ -37,6 +38,7 @@
 		12292AE7085BD4B2C64A6BDE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		15C9F68B286B396193F4A154 /* TaskCompletionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCompletionView.swift; sourceTree = "<group>"; };
 		25C9C764163815D2D98E55B7 /* PermissionRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionRequestView.swift; sourceTree = "<group>"; };
+		A099EADD002CAEFA1EA4E576 /* QuestionRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionRequestView.swift; sourceTree = "<group>"; };
 		260B105455CDA4566B99E345 /* OC_Notch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OC_Notch.entitlements; sourceTree = "<group>"; };
 		44C640028693BA68BDFC1478 /* SessionDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDropdownView.swift; sourceTree = "<group>"; };
 		50EDAF3636B137DA7A6C7BD1 /* NotchShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchShellView.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 			children = (
 				50EDAF3636B137DA7A6C7BD1 /* NotchShellView.swift */,
 				25C9C764163815D2D98E55B7 /* PermissionRequestView.swift */,
+				A099EADD002CAEFA1EA4E576 /* QuestionRequestView.swift */,
 				532B97451217BB6A3FFB39C4 /* SessionCounterView.swift */,
 				44C640028693BA68BDFC1478 /* SessionDropdownView.swift */,
 				15C9F68B286B396193F4A154 /* TaskCompletionView.swift */,
@@ -232,6 +235,7 @@
 				2E6E3A47F8484F0052D1EDC2 /* OpenCodeServerManager.swift in Sources */,
 				DC4F1EC917D4D000EEABFA88 /* PermissionQueueManager.swift in Sources */,
 				936745CB3EF985672B3B1D11 /* PermissionRequestView.swift in Sources */,
+				43F1B91BF6328017805199B6 /* QuestionRequestView.swift in Sources */,
 				8DB7914AD05601F1A67DE673 /* PixelSpriteGenerator.swift in Sources */,
 				C533157F663E7AFDB86A2B5C /* ProcessScanner.swift in Sources */,
 				E81A68F6BEF28B323AF2D665 /* SQLiteReader.swift in Sources */,
