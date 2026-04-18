@@ -1,10 +1,20 @@
 import AppKit
 import SwiftUI
 
+// MARK: - PassthroughView
+
+final class PassthroughView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let result = super.hitTest(point) else { return nil }
+        // Pass through clicks that land on this container or its layer-hosting parent.
+        // Only intercept if a real SwiftUI control caught the hit.
+        if result === self { return nil }
+        return result
+    }
+}
+
 // MARK: - NotchPanel
 
-/// A non-activating, borderless, transparent NSPanel that overlays the notch area.
-/// Never steals keyboard focus from the user's active application.
 final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
@@ -25,26 +35,35 @@ final class NotchPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         hidesOnDeactivate = false
         ignoresMouseEvents = false
+
+        let passthrough = PassthroughView()
+        passthrough.wantsLayer = true
+        contentView = passthrough
     }
 }
 
 // MARK: - NotchPanelController
 
-/// Manages the NotchPanel lifecycle: creation, positioning, and screen change observation.
 @MainActor
 final class NotchPanelController {
     private var panel: NotchPanel?
     private var screenObserver: Any?
-    private let sessionMonitor = SessionMonitorService()
+    private var stateObserver: Any?
+    let sessionMonitor = SessionMonitorService()
+
+    private static let collapsedHeight: CGFloat = 44
+    private static let expandedHeight: CGFloat = 420
 
     func showPanel() {
-        let frame = calculateNotchFrame()
+        let frame = calculateNotchFrame(expanded: false)
         let panel = NotchPanel(contentRect: frame)
 
-        let hostingView = NSHostingView(
-            rootView: NotchShellView()
-                .environment(sessionMonitor)
-        )
+        let shellView = NotchShellView(onExpandChange: { [weak self] expanded in
+            self?.updatePanelSize(expanded: expanded)
+        })
+            .environment(sessionMonitor)
+
+        let hostingView = NSHostingView(rootView: shellView)
         hostingView.frame = panel.contentView?.bounds ?? frame
         hostingView.autoresizingMask = [.width, .height]
 
@@ -55,39 +74,37 @@ final class NotchPanelController {
 
         observeScreenChanges()
 
-        // Start monitoring OpenCode sessions
         Task {
             await sessionMonitor.startMonitoring()
         }
     }
 
+    func updatePanelSize(expanded: Bool) {
+        guard let panel else { return }
+        let newFrame = calculateNotchFrame(expanded: expanded)
+        panel.setFrame(newFrame, display: true, animate: true)
+    }
+
     // MARK: - Notch Geometry
 
-    /// Calculate the frame that spans the full menu bar area (left auxiliary + notch + right auxiliary).
-    /// Uses screen-global coordinates for correct NSPanel positioning.
-    private func calculateNotchFrame() -> NSRect {
+    private func calculateNotchFrame(expanded: Bool) -> NSRect {
         guard let screen = NSScreen.main else {
-            return NSRect(x: 0, y: 0, width: 400, height: 38)
+            return NSRect(x: 0, y: 0, width: 400, height: Self.collapsedHeight)
         }
 
         let screenFrame = screen.frame
 
+        let notchWidth: CGFloat
         if let leftArea = screen.auxiliaryTopLeftArea,
            let rightArea = screen.auxiliaryTopRightArea {
-            // auxiliaryTopLeftArea/auxiliaryTopRightArea are in screen-local coordinates.
-            // The panel spans the full top bar: from x=0 to the full screen width.
-            // Height = safeAreaInsets.top (the menu bar / notch height).
-            let height = screen.safeAreaInsets.top
-            let width = screenFrame.width
-            let x = screenFrame.origin.x
-            let y = screenFrame.maxY - height
-
-            return NSRect(x: x, y: y, width: width, height: height)
+            let notchW = rightArea.minX - leftArea.maxX
+            notchWidth = notchW + 240
+        } else {
+            notchWidth = 400
         }
 
-        // Fallback for screens without a notch: center a bar at the top
-        let width: CGFloat = 400
-        let height: CGFloat = 38
+        let width = min(notchWidth, screenFrame.width)
+        let height = expanded ? Self.expandedHeight : Self.collapsedHeight
         let x = screenFrame.origin.x + (screenFrame.width - width) / 2
         let y = screenFrame.maxY - height
 
@@ -110,7 +127,7 @@ final class NotchPanelController {
 
     private func repositionPanel() {
         guard let panel else { return }
-        let newFrame = calculateNotchFrame()
+        let newFrame = calculateNotchFrame(expanded: false)
         panel.setFrame(newFrame, display: true, animate: false)
     }
 }

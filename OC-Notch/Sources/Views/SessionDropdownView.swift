@@ -16,10 +16,6 @@ struct SessionDropdownView: View {
             }
         }
         .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
-        )
     }
 
     // MARK: - No Sessions

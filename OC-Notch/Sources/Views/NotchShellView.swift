@@ -10,17 +10,29 @@ struct NotchShellView: View {
     @State private var permissionQueue = PermissionQueueManager()
     @State private var notchState: NotchState = .collapsed
 
+    var onExpandChange: ((Bool) -> Void)?
+
     var body: some View {
         VStack(spacing: 0) {
-            // Permanent bar alongside notch
             notchBar
 
-            // Expandable content area
             if notchState != .collapsed {
                 expandedContent
+                    .frame(width: pillWidth)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
+                    )
+                    .padding(.top, 4)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
+
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: notchState)
         .onChange(of: monitor.pendingPermissions) { _, newPerms in
             syncPermissionQueue(newPerms)
@@ -37,6 +49,9 @@ struct NotchShellView: View {
         }
         .onChange(of: monitor.pendingPermissions.count) { _, _ in updateAvatarState() }
         .onChange(of: monitor.activeSessions) { _, _ in updateAvatarState() }
+        .onChange(of: notchState) { _, newState in
+            onExpandChange?(newState != .collapsed)
+        }
     }
 
     // MARK: - Notch Bar
@@ -169,6 +184,10 @@ struct NotchShellView: View {
             return 180
         }
         return rightArea.minX - leftArea.maxX
+    }
+
+    private var pillWidth: CGFloat {
+        max(notchWidth + 80, 300)
     }
 }
 
