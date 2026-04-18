@@ -26,6 +26,10 @@ final class SessionMonitorService {
     private let sqliteReader = SQLiteReader()
     private let completionDetector = CompletionDetector()
 
+    /// Recently replied question IDs with expiry timestamps.
+    /// Prevents poll from re-adding questions that were just answered but not yet processed server-side.
+    private var recentlyRepliedQuestions: [String: Date] = [:]
+
     private var scanTask: Task<Void, Never>?
     private var sseListenTasks: [String: Task<Void, Never>] = [String: Task<Void, Never>]()
 
@@ -84,16 +88,29 @@ final class SessionMonitorService {
     func replyQuestion(requestID: String, answers: [[String]]) async {
         guard pendingQuestions.contains(where: { $0.id == requestID }) else { return }
 
-        if let httpClient = httpClients.values.first {
-            do {
-                try await httpClient.replyQuestion(requestID: requestID, answers: answers)
-                pendingQuestions.removeAll { $0.id == requestID }
-            } catch {
-                logger.error("Failed to reply question: \(error)")
-            }
-        } else {
+        let httpClient = httpClientForQuestion(requestID: requestID) ?? httpClients.values.first
+        guard let httpClient else {
             logger.warning("No HTTP client available to reply to question \(requestID)")
+            return
         }
+
+        do {
+            try await httpClient.replyQuestion(requestID: requestID, answers: answers)
+            pendingQuestions.removeAll { $0.id == requestID }
+            recentlyRepliedQuestions[requestID] = Date().addingTimeInterval(10)
+        } catch {
+            logger.error("Failed to reply question: \(error)")
+        }
+    }
+
+    private func httpClientForQuestion(requestID: String) -> OpenCodeHTTPClient? {
+        guard let question = pendingQuestions.first(where: { $0.id == requestID }) else { return nil }
+        for (_, client) in httpClients {
+            if activeSessions.contains(where: { $0.id == question.sessionID }) {
+                return client
+            }
+        }
+        return nil
     }
 
     // MARK: - Instance Discovery
@@ -179,6 +196,10 @@ final class SessionMonitorService {
             allPermissions += await httpClient.listPermissions()
             allQuestions += await httpClient.listQuestions()
         }
+
+        let now = Date()
+        recentlyRepliedQuestions = recentlyRepliedQuestions.filter { $0.value > now }
+        allQuestions = allQuestions.filter { recentlyRepliedQuestions[$0.id] == nil }
 
         pendingPermissions = allPermissions
         pendingQuestions = allQuestions
@@ -272,11 +293,12 @@ final class SessionMonitorService {
         case .permissionReplied(_, let requestID, _):
             pendingPermissions.removeAll { $0.id == requestID }
 
-        case .questionAsked(let request):
-            pendingQuestions.append(request)
+        case .questionAsked:
+            Task { await self.pollPermissionsAndQuestions() }
 
         case .questionReplied(_, let requestID):
             pendingQuestions.removeAll { $0.id == requestID }
+            recentlyRepliedQuestions[requestID] = Date().addingTimeInterval(30)
 
         case .todoUpdated(let sessionID, let todos):
             // Use CompletionDetector for todo-based completion
