@@ -15,6 +15,7 @@ final class SessionMonitorService {
     var pendingPermissions: [OCPermissionRequest] = []
     var pendingQuestions: [OCQuestionRequest] = []
     var lastCompletion: TaskCompletionInfo?
+    var opencodePIDCount: Int = 0
 
     // MARK: - Internal State
 
@@ -35,9 +36,6 @@ final class SessionMonitorService {
 
         // Initial scan
         await scanForInstances()
-
-        // Load sessions from SQLite as baseline (catches TUI-only sessions)
-        await loadSessionsFromDB()
 
         // Periodic rescan for new/removed instances
         scanTask = Task {
@@ -118,7 +116,6 @@ final class SessionMonitorService {
                 let sseClient = OpenCodeSSEClient(instance: instance)
                 sseClients[instance.id] = sseClient
 
-                // Start listening to SSE events
                 let eventStream = await sseClient.connect()
                 sseListenTasks[instance.id] = Task { [weak self] in
                     for await event in eventStream {
@@ -126,25 +123,20 @@ final class SessionMonitorService {
                     }
                 }
 
-                logger.info("Connected to OpenCode instance: \(instance.baseURL)")
+                let sessions = await httpClient.listSessions()
+                for session in sessions {
+                    if activeSessions.contains(where: { $0.id == session.id }) == false {
+                        activeSessions.append(session)
+                        completionDetector.trackSession(id: session.id, title: session.title)
+                    }
+                }
+
+                logger.info("Connected to OpenCode instance: \(instance.baseURL) with \(sessions.count) sessions")
             }
         }
 
         instances = discovered
-    }
-
-    // MARK: - SQLite Fallback
-
-    private func loadSessionsFromDB() async {
-        let dbSessions = await sqliteReader.readSessions()
-
-        // Merge with SSE-sourced sessions (SSE takes priority)
-        let sseSessionIDs = Set(activeSessions.map(\.id))
-        for session in dbSessions {
-            if sseSessionIDs.contains(session.id) == false {
-                activeSessions.append(session)
-            }
-        }
+        opencodePIDCount = await processScanner.countProcesses()
     }
 
     // MARK: - Completion Handling
@@ -255,5 +247,32 @@ final class SessionMonitorService {
         case .unknown(let type):
             logger.debug("Unknown event type: \(type)")
         }
+    }
+
+    // MARK: - REST JSON Parsing
+
+    nonisolated static func parseSessionFromREST(_ dict: [String: Any]) -> OCSession {
+        let timeDict = dict["time"] as? [String: Any] ?? [:]
+        let summaryDict = dict["summary"] as? [String: Any]
+
+        return OCSession(
+            id: dict["id"] as? String ?? "",
+            slug: dict["slug"] as? String ?? "",
+            projectID: dict["projectID"] as? String ?? "",
+            directory: dict["directory"] as? String ?? "",
+            title: dict["title"] as? String ?? "Untitled",
+            status: .idle,
+            summary: summaryDict.map {
+                OCSessionSummary(
+                    additions: $0["additions"] as? Int ?? 0,
+                    deletions: $0["deletions"] as? Int ?? 0,
+                    files: $0["files"] as? Int ?? 0
+                )
+            },
+            timeCreated: Date(timeIntervalSince1970: (timeDict["created"] as? Double ?? 0) / 1000),
+            timeUpdated: Date(timeIntervalSince1970: (timeDict["updated"] as? Double ?? 0) / 1000),
+            parentID: dict["parentID"] as? String,
+            workspaceID: dict["workspaceID"] as? String
+        )
     }
 }

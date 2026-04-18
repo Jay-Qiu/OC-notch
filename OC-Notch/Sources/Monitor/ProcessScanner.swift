@@ -9,7 +9,6 @@ actor ProcessScanner {
     func findInstances() -> [OCInstance] {
         var instances: [OCInstance] = []
 
-        // Get all opencode PIDs
         let pids = findOpenCodePIDs()
         guard pids.isEmpty == false else {
             logger.info("No opencode processes found")
@@ -18,7 +17,6 @@ actor ProcessScanner {
 
         logger.info("Found \(pids.count) opencode processes")
 
-        // For each PID, check if it's listening on a port
         for pid in pids {
             if let port = findListeningPort(pid: pid) {
                 let instance = OCInstance(
@@ -33,6 +31,10 @@ actor ProcessScanner {
         }
 
         return instances
+    }
+
+    func countProcesses() -> Int {
+        findOpenCodePIDs().count
     }
 
     // MARK: - Private
@@ -83,17 +85,22 @@ actor ProcessScanner {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else { return nil }
 
-        // Look for LISTEN lines like: "opencode 39562 jquach 9u IPv4 ... TCP 127.0.0.1:4096 (LISTEN)"
+        // lsof with -i + -p uses OR semantics — filter lines by matching PID column
+        let pidStr = "\(pid)"
         for line in output.split(separator: "\n") {
             let lineStr = String(line)
-            if lineStr.contains("LISTEN") && lineStr.contains("opencode") {
-                // Extract port from "host:port"
-                if let portRange = lineStr.range(of: #":(\d+)\s+\(LISTEN\)"#, options: .regularExpression) {
-                    let match = lineStr[portRange]
-                    let portStr = match.split(separator: ":").last?.replacingOccurrences(of: " (LISTEN)", with: "") ?? ""
-                    if let port = Int(portStr) {
-                        return port
-                    }
+            guard lineStr.contains("LISTEN") else { continue }
+
+            // Parse PID from second column: "opencode  39562 jquach ..."
+            let columns = lineStr.split(separator: " ", omittingEmptySubsequences: true)
+            guard columns.count >= 2, String(columns[1]) == pidStr else { continue }
+
+            // Extract port from "host:port (LISTEN)"
+            if let portRange = lineStr.range(of: #":(\d+)\s+\(LISTEN\)"#, options: .regularExpression) {
+                let match = lineStr[portRange]
+                let portStr = match.split(separator: ":").last?.replacingOccurrences(of: " (LISTEN)", with: "") ?? ""
+                if let port = Int(portStr) {
+                    return port
                 }
             }
         }

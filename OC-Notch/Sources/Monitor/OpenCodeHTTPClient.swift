@@ -28,6 +28,21 @@ actor OpenCodeHTTPClient {
         }
     }
 
+    // MARK: - Sessions
+
+    func listSessions() async -> [OCSession] {
+        let url = instance.baseURL.appendingPathComponent("session")
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return [] }
+            return dicts.map { SessionMonitorService.parseSessionFromREST($0) }
+        } catch {
+            logger.error("Failed to list sessions: \(error)")
+            return []
+        }
+    }
+
     // MARK: - Permission Reply
 
     /// Reply to a permission request.

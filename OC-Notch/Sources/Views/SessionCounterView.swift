@@ -8,11 +8,11 @@ struct SessionCounterView: View {
 
     var body: some View {
         Button(action: onTap) {
-            Text("\(monitor.activeSessions.count)")
+            Text("\(monitor.opencodePIDCount)")
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
                 .foregroundStyle(.white)
                 .contentTransition(.numericText())
-                .animation(.snappy, value: monitor.activeSessions.count)
+                .animation(.snappy, value: monitor.opencodePIDCount)
         }
         .buttonStyle(.plain)
     }
