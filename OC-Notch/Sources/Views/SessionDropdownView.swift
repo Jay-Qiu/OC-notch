@@ -6,16 +6,19 @@ struct SessionDropdownView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if monitor.activeSessions.isEmpty {
-                noSessionsView
-            } else {
-                ForEach(monitor.activeSessions) { session in
-                    sessionRow(session)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                if monitor.activeSessions.isEmpty {
+                    noSessionsView
+                } else {
+                    ForEach(monitor.activeSessions) { session in
+                        sessionRow(session)
+                    }
                 }
             }
+            .padding(8)
         }
-        .padding(8)
+        .frame(maxHeight: 280)
     }
 
     // MARK: - No Sessions

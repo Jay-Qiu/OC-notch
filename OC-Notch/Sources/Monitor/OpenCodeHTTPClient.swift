@@ -83,7 +83,7 @@ actor OpenCodeHTTPClient {
             throw HTTPError.serverError(statusCode: http.statusCode)
         }
 
-        logger.info("Permission \(requestID) replied: \(reply.rawValue)")
+        logger.notice("Permission \(requestID) replied: \(reply.rawValue)")
     }
 }
 

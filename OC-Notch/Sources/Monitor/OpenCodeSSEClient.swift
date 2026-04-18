@@ -49,7 +49,7 @@ actor OpenCodeSSEClient {
                 return
             }
 
-            logger.info("SSE connected to \(self.instance.baseURL)")
+            logger.notice("SSE connected to \(self.instance.baseURL)")
 
             var dataBuffer = ""
 

@@ -32,7 +32,7 @@ final class SessionMonitorService {
     // MARK: - Lifecycle
 
     func startMonitoring() async {
-        logger.info("Starting session monitoring")
+        logger.notice("Starting session monitoring")
 
         // Initial scan
         await scanForInstances()
@@ -123,15 +123,7 @@ final class SessionMonitorService {
                     }
                 }
 
-                let sessions = await httpClient.listSessions()
-                for session in sessions {
-                    if activeSessions.contains(where: { $0.id == session.id }) == false {
-                        activeSessions.append(session)
-                        completionDetector.trackSession(id: session.id, title: session.title)
-                    }
-                }
-
-                logger.info("Connected to OpenCode instance: \(instance.baseURL) with \(sessions.count) sessions")
+                logger.notice("Connected to OpenCode instance: \(instance.baseURL)")
             }
         }
 
@@ -139,6 +131,24 @@ final class SessionMonitorService {
         let totalPIDs = await processScanner.countProcesses()
         let serverCount = discovered.count
         opencodePIDCount = max(totalPIDs - serverCount, 0)
+
+        let dirs = await processScanner.findActiveDirectories()
+        logger.notice("Active directories: \(dirs)")
+        if dirs.isEmpty == false {
+            let sqliteSessions = await sqliteReader.readSessions(directories: dirs)
+            logger.notice("SQLite returned \(sqliteSessions.count) sessions, activeSessions has \(self.activeSessions.count)")
+            for session in sqliteSessions {
+                if activeSessions.contains(where: { $0.id == session.id }) == false {
+                    activeSessions.append(session)
+                    completionDetector.trackSession(id: session.id, title: session.title)
+                    logger.notice("Added session: \(session.title) [\(session.directory)]")
+                }
+            }
+            let activeDirs = Set(dirs)
+            activeSessions.removeAll { session in
+                session.directory.isEmpty == false && activeDirs.contains(session.directory) == false
+            }
+        }
     }
 
     // MARK: - Completion Handling
@@ -168,7 +178,7 @@ final class SessionMonitorService {
     private func handleEvent(_ event: OCEvent) {
         switch event {
         case .serverConnected:
-            logger.info("SSE: server connected")
+            logger.notice("SSE: server connected")
 
         case .sessionCreated(let sessionID, let info):
             if activeSessions.contains(where: { $0.id == sessionID }) == false {
@@ -198,6 +208,16 @@ final class SessionMonitorService {
         case .sessionStatus(let sessionID, let status):
             if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
                 activeSessions[index].status = status
+            }
+            switch status {
+            case .busy:
+                _ = completionDetector.checkIdleTransition(sessionID: sessionID, newStatus: .busy)
+            case .idle:
+                if let completion = completionDetector.checkIdleTransition(sessionID: sessionID, newStatus: .idle) {
+                    reportCompletion(completion, sessionID: sessionID)
+                }
+            case .retry:
+                break
             }
 
         case .sessionIdle(let sessionID):

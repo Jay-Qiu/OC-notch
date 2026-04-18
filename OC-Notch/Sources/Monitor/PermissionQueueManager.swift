@@ -21,7 +21,7 @@ final class PermissionQueueManager {
 
     func enqueue(_ request: OCPermissionRequest) {
         queue.append(request)
-        logger.info("Permission enqueued: \(request.id) (queue size: \(self.queue.count))")
+        logger.notice("Permission enqueued: \(request.id) (queue size: \(self.queue.count))")
     }
 
     func remove(requestID: String) {
@@ -30,7 +30,7 @@ final class PermissionQueueManager {
         if currentIndex >= queue.count {
             currentIndex = max(0, queue.count - 1)
         }
-        logger.info("Permission removed: \(requestID) (queue size: \(self.queue.count))")
+        logger.notice("Permission removed: \(requestID) (queue size: \(self.queue.count))")
     }
 
     func removeAll(forSession sessionID: String) {

@@ -11,11 +11,11 @@ actor ProcessScanner {
 
         let pids = findOpenCodePIDs()
         guard pids.isEmpty == false else {
-            logger.info("No opencode processes found")
+            logger.notice("No opencode processes found")
             return []
         }
 
-        logger.info("Found \(pids.count) opencode processes")
+        logger.notice("Found \(pids.count) opencode processes")
 
         for pid in pids {
             if let port = findListeningPort(pid: pid) {
@@ -26,7 +26,7 @@ actor ProcessScanner {
                     hostname: "127.0.0.1"
                 )
                 instances.append(instance)
-                logger.info("Found OpenCode instance: PID \(pid) on port \(port)")
+                logger.notice("Found OpenCode instance: PID \(pid) on port \(port)")
             }
         }
 
@@ -37,6 +37,17 @@ actor ProcessScanner {
         findOpenCodePIDs().count
     }
 
+    func findActiveDirectories() -> [String] {
+        let pids = findOpenCodePIDs()
+        var dirs: [String] = []
+        for pid in pids {
+            if let cwd = getCWD(pid: pid) {
+                dirs.append(cwd)
+            }
+        }
+        return dirs
+    }
+
     // MARK: - Private
 
     /// Find PIDs of running opencode processes using `pgrep`.
@@ -44,8 +55,8 @@ actor ProcessScanner {
         let task = Process()
         let pipe = Pipe()
 
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        task.arguments = ["-x", "opencode"]
+        task.executableURL = URL(fileURLWithPath: "/bin/ps")
+        task.arguments = ["-axc", "-o", "pid,comm"]
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
 
@@ -53,7 +64,7 @@ actor ProcessScanner {
             try task.run()
             task.waitUntilExit()
         } catch {
-            logger.error("Failed to run pgrep: \(error)")
+            logger.error("Failed to run ps: \(error)")
             return []
         }
 
@@ -63,7 +74,14 @@ actor ProcessScanner {
         let ownPID = ProcessInfo.processInfo.processIdentifier
         return output
             .split(separator: "\n")
-            .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
+            .compactMap { line -> Int32? in
+                let cols = line.split(separator: " ", maxSplits: 1)
+                guard cols.count == 2,
+                      cols[1].trimmingCharacters(in: .whitespaces) == "opencode",
+                      let pid = Int32(cols[0].trimmingCharacters(in: .whitespaces))
+                else { return nil }
+                return pid
+            }
             .filter { $0 != ownPID }
     }
 
@@ -101,6 +119,34 @@ actor ProcessScanner {
             }
         }
 
+        return nil
+    }
+
+    private func getCWD(pid: Int32) -> String? {
+        let task = Process()
+        let pipe = Pipe()
+
+        task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        task.arguments = ["-a", "-p", "\(pid)", "-d", "cwd", "-F", "n"]
+        task.standardOutput = pipe
+        task.standardError = FileHandle.nullDevice
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            return nil
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8) else { return nil }
+
+        for line in output.split(separator: "\n") {
+            let l = String(line)
+            if l.hasPrefix("n") {
+                return String(l.dropFirst())
+            }
+        }
         return nil
     }
 }

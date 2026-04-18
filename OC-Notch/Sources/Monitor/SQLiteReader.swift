@@ -20,15 +20,25 @@ actor SQLiteReader {
 
     // MARK: - Sessions
 
-    /// Read all non-archived sessions from the database.
-    func readSessions() -> [OCSession] {
+    func readSessions(directories: [String]) -> [OCSession] {
+        guard directories.isEmpty == false else { return [] }
         guard let db = openDB() else { return [] }
         defer { sqlite3_close(db) }
 
+        let placeholders = directories.map { _ in "?" }.joined(separator: ", ")
+
+        // ROW_NUMBER per directory: keep only the most recent session per directory
+        // to match running TUI processes to their current session
         let sql = """
-            SELECT id, title, project_id, time_created, time_updated
-            FROM session
-            WHERE time_archived IS NULL
+            SELECT id, title, project_id, directory, time_created, time_updated,
+                   summary_additions, summary_deletions, summary_files
+            FROM (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY directory ORDER BY time_updated DESC) as rn
+                FROM session
+                WHERE time_archived IS NULL
+                  AND directory IN (\(placeholders))
+            )
+            WHERE rn = 1
             ORDER BY time_updated DESC
             """
 
@@ -39,29 +49,45 @@ actor SQLiteReader {
         }
         defer { sqlite3_finalize(stmt) }
 
+        // SQLITE_TRANSIENT tells SQLite to copy the string immediately,
+        // which is required because Swift's C-string bridging uses temporary buffers.
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        for (index, dir) in directories.enumerated() {
+            sqlite3_bind_text(stmt, Int32(index + 1), dir, -1, SQLITE_TRANSIENT)
+        }
+
         var sessions: [OCSession] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
             let id = String(cString: sqlite3_column_text(stmt, 0))
             let title = String(cString: sqlite3_column_text(stmt, 1))
             let projectID = String(cString: sqlite3_column_text(stmt, 2))
-            let created = sqlite3_column_int64(stmt, 3)
-            let updated = sqlite3_column_int64(stmt, 4)
+            let directory = String(cString: sqlite3_column_text(stmt, 3))
+            let created = sqlite3_column_int64(stmt, 4)
+            let updated = sqlite3_column_int64(stmt, 5)
+            let additions = sqlite3_column_type(stmt, 6) != SQLITE_NULL ? Int(sqlite3_column_int64(stmt, 6)) : nil
+            let deletions = sqlite3_column_type(stmt, 7) != SQLITE_NULL ? Int(sqlite3_column_int64(stmt, 7)) : nil
+            let files = sqlite3_column_type(stmt, 8) != SQLITE_NULL ? Int(sqlite3_column_int64(stmt, 8)) : nil
+
+            var summary: OCSessionSummary?
+            if let a = additions, let d = deletions, let f = files {
+                summary = OCSessionSummary(additions: a, deletions: d, files: f)
+            }
 
             let session = OCSession(
                 id: id,
                 slug: "",
                 projectID: projectID,
-                directory: "",
+                directory: directory,
                 title: title,
                 status: .idle,
-                summary: nil,
+                summary: summary,
                 timeCreated: Date(timeIntervalSince1970: Double(created) / 1000),
                 timeUpdated: Date(timeIntervalSince1970: Double(updated) / 1000)
             )
             sessions.append(session)
         }
 
-        logger.info("Read \(sessions.count) sessions from SQLite")
+        logger.notice("Read \(sessions.count) sessions for \(directories.count) directories from SQLite, dirs=\(directories)")
         return sessions
     }
 
@@ -78,7 +104,8 @@ actor SQLiteReader {
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
         defer { sqlite3_finalize(stmt) }
 
-        sqlite3_bind_text(stmt, 1, sessionID, -1, nil)
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(stmt, 1, sessionID, -1, SQLITE_TRANSIENT)
 
         var todos: [OCTodo] = []
         while sqlite3_step(stmt) == SQLITE_ROW {

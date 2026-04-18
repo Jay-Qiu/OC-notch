@@ -22,7 +22,7 @@ enum TerminalLauncher {
         for bundleID in terminalBundleIDs {
             if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
                 app.activate()
-                logger.info("Activated terminal: \(bundleID)")
+                logger.notice("Activated terminal: \(bundleID)")
                 return
             }
         }
@@ -30,7 +30,7 @@ enum TerminalLauncher {
         // Fallback: try Apple Terminal
         if let terminalURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") {
             NSWorkspace.shared.openApplication(at: terminalURL, configuration: .init())
-            logger.info("Opened Apple Terminal as fallback")
+            logger.notice("Opened Apple Terminal as fallback")
         } else {
             logger.warning("No terminal application found")
         }

@@ -35,11 +35,11 @@ final class OpenCodeServerManager {
             if port != first.port {
                 port = first.port
                 isRunning = true
-                logger.info("Discovered OpenCode server on port \(first.port) (PID \(first.pid))")
+                logger.notice("Discovered OpenCode server on port \(first.port) (PID \(first.pid))")
             }
         } else {
             if isRunning {
-                logger.info("OpenCode server no longer available")
+                logger.notice("OpenCode server no longer available")
                 port = nil
                 isRunning = false
             }

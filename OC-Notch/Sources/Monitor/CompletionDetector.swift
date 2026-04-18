@@ -26,7 +26,7 @@ final class CompletionDetector {
         // Only trigger if we haven't already reported this completion
         if allCompleted && state.lastTodoCompletionReported == false {
             sessionStates[sessionID]?.lastTodoCompletionReported = true
-            logger.info("Todo completion detected for session \(sessionID)")
+            logger.notice("Todo completion detected for session \(sessionID)")
             return TaskCompletionInfo(
                 sessionID: sessionID,
                 sessionTitle: state.title ?? sessionID,
@@ -57,7 +57,7 @@ final class CompletionDetector {
                 // Only report if there was meaningful activity (> debounce interval)
                 if let lastActivity = state.lastActivityTime,
                    Date().timeIntervalSince(lastActivity) >= debounceInterval {
-                    logger.info("Idle transition detected for session \(sessionID)")
+                    logger.notice("Idle transition detected for session \(sessionID)")
                     return TaskCompletionInfo(
                         sessionID: sessionID,
                         sessionTitle: state.title ?? sessionID
