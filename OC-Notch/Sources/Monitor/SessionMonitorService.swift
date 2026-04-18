@@ -170,10 +170,16 @@ final class SessionMonitorService {
             let sqliteSessions = await sqliteReader.readSessions(directories: dirs)
             logger.notice("SQLite returned \(sqliteSessions.count) sessions (was \(self.activeSessions.count))")
 
+            // Detect busy sessions from SQLite for TUI-only sessions without SSE
+            let sqliteSessionIDs = Set(sqliteSessions.map(\.id))
+            let busyIDs = await sqliteReader.readBusySessionIDs(activeSessionIDs: sqliteSessionIDs)
+
             var merged: [OCSession] = []
             for var session in sqliteSessions {
                 if let existing = activeSessions.first(where: { $0.id == session.id }) {
                     session.status = existing.status
+                } else if busyIDs.contains(session.id) {
+                    session.status = .busy
                 }
                 merged.append(session)
                 completionDetector.trackSession(id: session.id, title: session.title)
