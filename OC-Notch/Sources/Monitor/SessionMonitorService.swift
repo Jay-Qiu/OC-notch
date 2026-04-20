@@ -30,6 +30,12 @@ final class SessionMonitorService {
     /// Prevents poll from re-adding questions that were just answered but not yet processed server-side.
     private var recentlyRepliedQuestions: [String: Date] = [:]
 
+    /// Recently replied permission IDs with expiry timestamps.
+    private var recentlyRepliedPermissions: [String: Date] = [:]
+
+    /// Maps sessionID → instanceID for routing replies to the correct HTTP client.
+    private var sessionToInstance: [String: String] = [:]
+
     private var scanTask: Task<Void, Never>?
     private var sseListenTasks: [String: Task<Void, Never>] = [String: Task<Void, Never>]()
 
@@ -67,50 +73,46 @@ final class SessionMonitorService {
     // MARK: - Actions
 
     func replyPermission(requestID: String, reply: PermissionReply) async {
-        // Find which instance owns this permission
         guard let permission = pendingPermissions.first(where: { $0.id == requestID }) else { return }
 
-        // Find an HTTP client for any connected instance
-        // (permissions go through the server that sent them)
-        if let httpClient = httpClients.values.first {
-            do {
-                try await httpClient.replyPermission(requestID: requestID, reply: reply)
-                // Remove from pending — the SSE event will confirm
-                pendingPermissions.removeAll { $0.id == requestID }
-            } catch {
-                logger.error("Failed to reply permission: \(error)")
-            }
-        } else {
+        let httpClient = httpClientForSession(permission.sessionID) ?? httpClients.values.first
+        guard let httpClient else {
             logger.warning("No HTTP client available to reply to permission \(permission.id)")
+            return
+        }
+
+        recentlyRepliedPermissions[requestID] = Date().addingTimeInterval(30)
+        do {
+            try await httpClient.replyPermission(requestID: requestID, reply: reply)
+            pendingPermissions.removeAll { $0.id == requestID }
+        } catch {
+            recentlyRepliedPermissions.removeValue(forKey: requestID)
+            logger.error("Failed to reply permission: \(error)")
         }
     }
 
     func replyQuestion(requestID: String, answers: [[String]]) async {
-        guard pendingQuestions.contains(where: { $0.id == requestID }) else { return }
+        guard let question = pendingQuestions.first(where: { $0.id == requestID }) else { return }
 
-        let httpClient = httpClientForQuestion(requestID: requestID) ?? httpClients.values.first
+        let httpClient = httpClientForSession(question.sessionID) ?? httpClients.values.first
         guard let httpClient else {
             logger.warning("No HTTP client available to reply to question \(requestID)")
             return
         }
 
+        recentlyRepliedQuestions[requestID] = Date().addingTimeInterval(30)
         do {
             try await httpClient.replyQuestion(requestID: requestID, answers: answers)
             pendingQuestions.removeAll { $0.id == requestID }
-            recentlyRepliedQuestions[requestID] = Date().addingTimeInterval(10)
         } catch {
+            recentlyRepliedQuestions.removeValue(forKey: requestID)
             logger.error("Failed to reply question: \(error)")
         }
     }
 
-    private func httpClientForQuestion(requestID: String) -> OpenCodeHTTPClient? {
-        guard let question = pendingQuestions.first(where: { $0.id == requestID }) else { return nil }
-        for (_, client) in httpClients {
-            if activeSessions.contains(where: { $0.id == question.sessionID }) {
-                return client
-            }
-        }
-        return nil
+    private func httpClientForSession(_ sessionID: String) -> OpenCodeHTTPClient? {
+        guard let instanceID = sessionToInstance[sessionID] else { return nil }
+        return httpClients[instanceID]
     }
 
     // MARK: - Instance Discovery
@@ -134,6 +136,7 @@ final class SessionMonitorService {
                 Task { await client.disconnect() }
             }
             httpClients.removeValue(forKey: id)
+            sessionToInstance = sessionToInstance.filter { $0.value != id }
             completionDetector.removeSession(id: id)
         }
 
@@ -151,7 +154,7 @@ final class SessionMonitorService {
                 let eventStream = await sseClient.connect()
                 sseListenTasks[instance.id] = Task { [weak self] in
                     for await event in eventStream {
-                        await self?.handleEvent(event)
+                        await self?.handleEvent(event, fromInstance: instance.id)
                     }
                 }
 
@@ -159,6 +162,7 @@ final class SessionMonitorService {
                 // sessions that were already busy before the SSE connection started.
                 if let statuses = await httpClient.getSessionStatuses() {
                     for (sessionID, status) in statuses {
+                        sessionToInstance[sessionID] = instance.id
                         if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
                             activeSessions[index].status = status
                         }
@@ -225,14 +229,20 @@ final class SessionMonitorService {
         var allPermissions: [OCPermissionRequest] = []
         var allQuestions: [OCQuestionRequest] = []
 
-        for httpClient in httpClients.values {
-            allPermissions += await httpClient.listPermissions()
-            allQuestions += await httpClient.listQuestions()
+        for (instanceID, httpClient) in httpClients {
+            let perms = await httpClient.listPermissions()
+            let questions = await httpClient.listQuestions()
+            for p in perms { sessionToInstance[p.sessionID] = instanceID }
+            for q in questions { sessionToInstance[q.sessionID] = instanceID }
+            allPermissions += perms
+            allQuestions += questions
         }
 
         let now = Date()
         recentlyRepliedQuestions = recentlyRepliedQuestions.filter { $0.value > now }
+        recentlyRepliedPermissions = recentlyRepliedPermissions.filter { $0.value > now }
         allQuestions = allQuestions.filter { recentlyRepliedQuestions[$0.id] == nil }
+        allPermissions = allPermissions.filter { recentlyRepliedPermissions[$0.id] == nil }
 
         pendingPermissions = allPermissions
         pendingQuestions = allQuestions
@@ -262,18 +272,20 @@ final class SessionMonitorService {
 
     // MARK: - Event Handling
 
-    private func handleEvent(_ event: OCEvent) {
+    private func handleEvent(_ event: OCEvent, fromInstance instanceID: String) {
         switch event {
         case .serverConnected:
             logger.notice("SSE: server connected")
 
         case .sessionCreated(let sessionID, let info):
+            sessionToInstance[sessionID] = instanceID
             if activeSessions.contains(where: { $0.id == sessionID }) == false {
                 activeSessions.append(info)
             }
             completionDetector.trackSession(id: sessionID, title: info.title)
 
         case .sessionUpdated(let sessionID, let info):
+            sessionToInstance[sessionID] = instanceID
             if let index = activeSessions.firstIndex(where: { $0.id == sessionID }) {
                 // Preserve status from session.status events
                 var updated = info
@@ -317,7 +329,7 @@ final class SessionMonitorService {
             }
 
         case .permissionAsked(var request):
-            // Enrich with session title
+            sessionToInstance[request.sessionID] = instanceID
             if let session = activeSessions.first(where: { $0.id == request.sessionID }) {
                 request.sessionTitle = session.title
             }
