@@ -75,8 +75,8 @@ private struct SessionRowButton: View {
 
     var body: some View {
         Button {
-            TerminalLauncher.activateTerminal(directory: session.directory)
             onDismiss()
+            TerminalLauncher.activateTerminal(directory: session.directory)
         } label: {
             HStack(spacing: DS.Spacing.sectionSpacing) {
                 // Animated status dot

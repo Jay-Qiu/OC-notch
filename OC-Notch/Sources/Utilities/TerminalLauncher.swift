@@ -78,21 +78,23 @@ enum TerminalLauncher {
 
     private static func focusiTermWindow(directory: String, tty: String?) {
         let dirName = (directory as NSString).lastPathComponent
-        var matchCondition: String
-        if let tty {
-            matchCondition = "tty of s is \"\(tty)\""
-        } else {
-            matchCondition = "sName contains \"\(directory)\" or sName contains \"\(dirName)\""
-        }
+        let normalizedDir = normalizePath(directory)
 
+        let ttyMatch = tty.map { "tty of s is \"\($0)\"" } ?? "false"
         let script = """
             tell application "iTerm"
                 activate
                 repeat with w in windows
                     repeat with t in tabs of w
                         repeat with s in sessions of t
+                            if \(ttyMatch) then
+                                select t
+                                select s
+                                set index of w to 1
+                                return
+                            end if
                             set sName to name of s
-                            if \(matchCondition) then
+                            if sName contains "\(normalizedDir)" or sName contains "\(dirName)" then
                                 select t
                                 select s
                                 set index of w to 1
@@ -135,6 +137,15 @@ enum TerminalLauncher {
 
     // MARK: - TTY Lookup
 
+    private static func normalizePath(_ path: String) -> String {
+        // Resolve /private prefix (macOS symlinks /tmp -> /private/tmp, /var -> /private/var)
+        let resolved = (path as NSString).resolvingSymlinksInPath
+        if resolved.hasSuffix("/") && resolved.count > 1 {
+            return String(resolved.dropLast())
+        }
+        return resolved
+    }
+
     private static func findTTY(forDirectory directory: String) -> String? {
         let ps = Process()
         let pipe = Pipe()
@@ -157,13 +168,15 @@ enum TerminalLauncher {
             return pid
         }
 
+        let normalizedDir = normalizePath(directory)
         for pid in pids {
-            guard let cwd = getCWD(pid: pid), cwd == directory else { continue }
+            guard let cwd = getCWD(pid: pid), normalizePath(cwd) == normalizedDir else { continue }
             if let tty = getTTY(pid: pid) {
                 logger.notice("TTY for dir \(directory): \(tty) (PID \(pid))")
                 return tty
             }
         }
+        logger.notice("No TTY found for dir \(directory) among \(pids.count) opencode processes")
         return nil
     }
 
@@ -209,12 +222,23 @@ enum TerminalLauncher {
 
     private static func runAppleScript(_ source: String) {
         Task.detached {
-            if let script = NSAppleScript(source: source) {
-                var error: NSDictionary?
-                script.executeAndReturnError(&error)
-                if let error {
-                    logger.error("AppleScript error: \(error)")
+            let task = Process()
+            let errPipe = Pipe()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            task.arguments = ["-e", source]
+            task.standardOutput = FileHandle.nullDevice
+            task.standardError = errPipe
+
+            do {
+                try task.run()
+                task.waitUntilExit()
+                if task.terminationStatus != 0 {
+                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                    let errStr = String(data: errData, encoding: .utf8) ?? ""
+                    logger.error("AppleScript failed (\(task.terminationStatus)): \(errStr)")
                 }
+            } catch {
+                logger.error("Failed to run osascript: \(error)")
             }
         }
     }
