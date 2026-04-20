@@ -12,6 +12,9 @@ struct NotchShellView: View {
     @State private var notchState: NotchState = .collapsed
     @State private var isHovering = false
     @State private var clickOutsideMonitor: Any?
+    /// When `true`, auto-expand for pending permissions/questions is suppressed
+    /// until the user clicks the notch bar or a *new* request arrives.
+    @State private var userDismissed = false
 
     var onExpandChange: ((Bool) -> Void)?
 
@@ -55,11 +58,17 @@ struct NotchShellView: View {
                 notchState = .collapsed
             }
         }
-        .onChange(of: monitor.pendingQuestions) { _, newQuestions in
+        .onChange(of: monitor.pendingQuestions) { oldQuestions, newQuestions in
             if newQuestions.isEmpty == false && notchState != .permission {
-                notchState = .question
+                if newQuestions.count > oldQuestions.count {
+                    userDismissed = false
+                }
+                if !userDismissed {
+                    notchState = .question
+                }
             } else if newQuestions.isEmpty && notchState == .question {
                 notchState = .collapsed
+                userDismissed = false
             }
         }
         .onChange(of: avatarStateManager.currentState) { _, newState in
@@ -72,8 +81,14 @@ struct NotchShellView: View {
             onExpandChange?(newState != .collapsed)
         }
         .onReceive(NotificationCenter.default.publisher(for: .notchClickedOutside)) { _ in
-            if notchState == .dropdown || notchState.isNotification {
+            switch notchState {
+            case .dropdown, .notification:
                 notchState = .collapsed
+            case .permission, .question:
+                userDismissed = true
+                notchState = .collapsed
+            case .collapsed:
+                break
             }
         }
     }
@@ -146,11 +161,20 @@ struct NotchShellView: View {
         switch notchState {
         case .dropdown:
             notchState = .collapsed
-        case .collapsed, .notification:
+        case .collapsed:
+            userDismissed = false
+            if !permissionQueue.isEmpty {
+                notchState = .permission
+            } else if !monitor.pendingQuestions.isEmpty {
+                notchState = .question
+            } else {
+                notchState = .dropdown
+            }
+        case .notification:
             notchState = .dropdown
         case .permission, .question:
-            // Permission/question takes priority — do not open dropdown
-            break
+            userDismissed = true
+            notchState = .collapsed
         }
     }
 
@@ -194,8 +218,10 @@ struct NotchShellView: View {
     private func syncPermissionQueue(_ permissions: [OCPermissionRequest]) {
         // Add new permissions
         let existingIDs = Set(permissionQueue.queue.map(\.id))
+        var hasNewArrivals = false
         for perm in permissions where existingIDs.contains(perm.id) == false {
             permissionQueue.enqueue(perm)
+            hasNewArrivals = true
         }
 
         // Remove resolved permissions
@@ -204,11 +230,18 @@ struct NotchShellView: View {
             permissionQueue.remove(requestID: existing.id)
         }
 
+        if hasNewArrivals {
+            userDismissed = false
+        }
+
         // Update notch state — permission always takes priority
         if permissionQueue.isEmpty == false {
-            notchState = .permission
+            if !userDismissed {
+                notchState = .permission
+            }
         } else if notchState == .permission {
             notchState = .collapsed
+            userDismissed = false
         }
     }
 
