@@ -5,35 +5,32 @@ struct QuestionRequestView: View {
     @Environment(SessionMonitorService.self) private var monitor
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DS.Spacing.sectionSpacing) {
             ForEach(Array(request.questions.enumerated()), id: \.offset) { _, question in
                 questionSection(question)
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
-        )
+        .dsCardBackground()
     }
 
     private func questionSection(_ question: OCQuestionInfo) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: DS.Spacing.cardInnerSpacing) {
+            HStack(spacing: DS.Spacing.sectionSpacing) {
                 Image(systemName: "questionmark.circle.fill")
-                    .foregroundStyle(.blue)
+                    .font(.system(size: 16))
+                    .foregroundStyle(DS.Colors.accentBlue)
                 Text(question.header.isEmpty ? "Question" : question.header)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .font(DS.Typography.title())
+                    .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
             }
 
             Text(question.question)
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.9))
+                .font(DS.Typography.body())
+                .foregroundStyle(DS.Colors.textPrimary.opacity(0.9))
                 .lineLimit(4)
 
-            VStack(spacing: 4) {
+            VStack(spacing: DS.Spacing.tightSpacing) {
                 ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
                     optionButton(option: option, index: index)
                 }
@@ -54,32 +51,32 @@ struct QuestionRequestView: View {
         } label: {
             HStack {
                 Text(option.label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white)
+                    .font(DS.Typography.caption())
+                    .foregroundStyle(DS.Colors.textPrimary)
 
                 if option.description.isEmpty == false {
                     Text(option.description)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .font(DS.Typography.caption())
+                        .foregroundStyle(DS.Colors.textSecondary)
                         .lineLimit(1)
                 }
 
                 Spacer()
 
                 if let key = shortcutKey {
-                    Text("⌘\(key.uppercased())")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                    Text("⌘\(key.uppercased())").dsShortcutBadge()
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.white.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.horizontal, DS.Spacing.cardInnerSpacing)
+            .padding(.vertical, DS.Spacing.elementSpacing)
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radii.small, style: .continuous)
+                    .fill(DS.Colors.elevatedSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radii.small, style: .continuous)
+                            .strokeBorder(DS.Colors.separator, lineWidth: 0.5)
+                    )
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

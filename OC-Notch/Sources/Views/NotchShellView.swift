@@ -9,6 +9,7 @@ struct NotchShellView: View {
     @State private var avatarStateManager = AvatarStateManager()
     @State private var permissionQueue = PermissionQueueManager()
     @State private var notchState: NotchState = .collapsed
+    @State private var isHovering = false
 
     var onExpandChange: ((Bool) -> Void)?
 
@@ -19,21 +20,29 @@ struct NotchShellView: View {
             if notchState != .collapsed {
                 expandedContent
                     .frame(width: pillWidth)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 16)
+                    .padding(.vertical, DS.Spacing.cardPadding)
+                    .padding(.horizontal, DS.Spacing.cardPadding + 2)
                     .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
+                        RoundedRectangle(cornerRadius: DS.Radii.expandedBottom, style: .continuous)
+                            .fill(DS.Colors.pillBackground)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DS.Radii.expandedBottom, style: .continuous)
+                                    .fill(.ultraThinMaterial.opacity(0.3))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DS.Radii.expandedBottom, style: .continuous)
+                                    .strokeBorder(DS.Colors.separator, lineWidth: 0.5)
+                            )
+                            .shadow(color: .black.opacity(DS.Shadows.expandedOpacity), radius: DS.Shadows.expandedRadius, y: DS.Shadows.expandedY)
                     )
-                    .padding(.top, 4)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, DS.Spacing.tightSpacing)
+                    .transition(.dynamicIsland())
             }
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: notchState)
+        .animation(notchState == .collapsed ? DS.Animations.close : DS.Animations.open, value: notchState)
         .onChange(of: monitor.pendingPermissions) { _, newPerms in
             syncPermissionQueue(newPerms)
         }
@@ -77,6 +86,19 @@ struct NotchShellView: View {
         }
         .frame(height: 36)
         .padding(.horizontal, 8)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
+                    .fill(DS.Colors.pillBackground)
+                RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .opacity(isHovering && notchState == .collapsed ? 1 : 0)
+            }
+            .animation(DS.Animations.smooth, value: isHovering)
+        )
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 
     // MARK: - Expanded Content
@@ -125,18 +147,19 @@ struct NotchShellView: View {
     // MARK: - Queue Pagination
 
     private var queuePagination: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DS.Spacing.elementSpacing) {
             Button {
                 permissionQueue.previous()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 9))
+                    .font(DS.Typography.micro())
+                    .foregroundStyle(DS.Colors.textSecondary)
             }
             .buttonStyle(.plain)
 
             ForEach(0..<permissionQueue.count, id: \.self) { index in
                 Circle()
-                    .fill(index == permissionQueue.currentIndex ? Color.white : Color.white.opacity(0.3))
+                    .fill(index == permissionQueue.currentIndex ? DS.Colors.textPrimary : DS.Colors.textTertiary)
                     .frame(width: 5, height: 5)
             }
 
@@ -144,15 +167,16 @@ struct NotchShellView: View {
                 permissionQueue.next()
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9))
+                    .font(DS.Typography.micro())
+                    .foregroundStyle(DS.Colors.textSecondary)
             }
             .buttonStyle(.plain)
 
             Text("\(permissionQueue.currentIndex + 1)/\(permissionQueue.count)")
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .font(DS.Typography.micro())
+                .foregroundStyle(DS.Colors.textTertiary)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, DS.Spacing.elementSpacing)
     }
 
     // MARK: - State Sync
