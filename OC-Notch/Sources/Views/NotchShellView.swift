@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// The main shell view that sits around the notch.
 /// Layout: [Avatar (SpriteKit)] — [Notch Spacer] — [Session Counter]
@@ -68,6 +69,11 @@ struct NotchShellView: View {
         .onChange(of: monitor.activeSessions) { _, _ in updateAvatarState() }
         .onChange(of: notchState) { _, newState in
             onExpandChange?(newState != .collapsed)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .notchClickedOutside)) { _ in
+            if notchState == .dropdown || notchState.isNotification {
+                notchState = .collapsed
+            }
         }
     }
 
@@ -211,6 +217,27 @@ struct NotchShellView: View {
             hasActiveSessions: monitor.activeSessions.contains { $0.status == .busy },
             lastCompletion: monitor.lastCompletion
         )
+    }
+
+    // MARK: - Click Outside
+
+    private func updateClickOutsideMonitor(expanded: Bool) {
+        if expanded {
+            guard clickOutsideMonitor == nil else { return }
+            clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [self] event in
+                guard let panel = NSApp.windows.first(where: { $0 is NotchPanel }) else { return }
+                let locationInScreen = event.locationInWindow
+                // Global events report location in screen coordinates
+                if !panel.frame.contains(locationInScreen) {
+                    notchState = .collapsed
+                }
+            }
+        } else {
+            if let monitor = clickOutsideMonitor {
+                NSEvent.removeMonitor(monitor)
+                clickOutsideMonitor = nil
+            }
+        }
     }
 
     // MARK: - Notch Width

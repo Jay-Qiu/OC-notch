@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    static let notchClickedOutside = Notification.Name("notchClickedOutside")
+}
+
 // MARK: - PassthroughView
 
 final class PassthroughView: NSView {
@@ -10,6 +14,39 @@ final class PassthroughView: NSView {
         // Only intercept if a real SwiftUI control caught the hit.
         if result === self { return nil }
         return result
+    }
+}
+
+// MARK: - ClickCatcherWindow
+
+final class ClickCatcherWindow: NSWindow {
+    var onMouseDown: (() -> Void)?
+
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+
+    init() {
+        super.init(
+            contentRect: NSScreen.main?.frame ?? .zero,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = false
+        level = .statusBar
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        hidesOnDeactivate = false
+        ignoresMouseEvents = false
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onMouseDown?()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onMouseDown?()
     }
 }
 
@@ -49,6 +86,7 @@ final class NotchPanelController {
     private var panel: NotchPanel?
     private var screenObserver: Any?
     private var stateObserver: Any?
+    private var clickCatcher: ClickCatcherWindow?
     let sessionMonitor = SessionMonitorService()
 
     private static let collapsedHeight: CGFloat = 44
@@ -83,6 +121,25 @@ final class NotchPanelController {
         guard let panel else { return }
         let newFrame = calculateNotchFrame(expanded: expanded)
         panel.setFrame(newFrame, display: true, animate: true)
+        updateClickOutsideMonitor(expanded: expanded)
+    }
+
+    // MARK: - Click Outside Detection
+
+    private func updateClickOutsideMonitor(expanded: Bool) {
+        if expanded {
+            guard clickCatcher == nil else { return }
+            let catcher = ClickCatcherWindow()
+            catcher.onMouseDown = { [weak self] in
+                NotificationCenter.default.post(name: .notchClickedOutside, object: nil)
+            }
+            catcher.orderFrontRegardless()
+            panel?.orderFrontRegardless()
+            clickCatcher = catcher
+        } else {
+            clickCatcher?.orderOut(nil)
+            clickCatcher = nil
+        }
     }
 
     // MARK: - Notch Geometry
