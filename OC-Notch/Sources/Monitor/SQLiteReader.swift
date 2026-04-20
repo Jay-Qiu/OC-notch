@@ -25,20 +25,25 @@ actor SQLiteReader {
         guard let db = openDB() else { return [] }
         defer { sqlite3_close(db) }
 
-        let placeholders = directories.map { _ in "?" }.joined(separator: ", ")
+        var countPerDir: [String: Int] = [:]
+        for dir in directories {
+            countPerDir[dir, default: 0] += 1
+        }
+        let uniqueDirs = Array(countPerDir.keys)
+        let maxPerDir = countPerDir.values.max() ?? 1
 
-        // ROW_NUMBER per directory: keep only the most recent session per directory
-        // to match running TUI processes to their current session
+        let placeholders = uniqueDirs.map { _ in "?" }.joined(separator: ", ")
+
         let sql = """
             SELECT id, title, project_id, directory, time_created, time_updated,
-                   summary_additions, summary_deletions, summary_files
+                   summary_additions, summary_deletions, summary_files, rn
             FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY directory ORDER BY time_updated DESC) as rn
                 FROM session
                 WHERE time_archived IS NULL
                   AND directory IN (\(placeholders))
             )
-            WHERE rn = 1
+            WHERE rn <= ?
             ORDER BY time_updated DESC
             """
 
@@ -49,14 +54,14 @@ actor SQLiteReader {
         }
         defer { sqlite3_finalize(stmt) }
 
-        // SQLITE_TRANSIENT tells SQLite to copy the string immediately,
-        // which is required because Swift's C-string bridging uses temporary buffers.
         let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-        for (index, dir) in directories.enumerated() {
+        for (index, dir) in uniqueDirs.enumerated() {
             sqlite3_bind_text(stmt, Int32(index + 1), dir, -1, SQLITE_TRANSIENT)
         }
+        sqlite3_bind_int(stmt, Int32(uniqueDirs.count + 1), Int32(maxPerDir))
 
         var sessions: [OCSession] = []
+        var seenPerDir: [String: Int] = [:]
         while sqlite3_step(stmt) == SQLITE_ROW {
             let id = String(cString: sqlite3_column_text(stmt, 0))
             let title = String(cString: sqlite3_column_text(stmt, 1))
@@ -67,6 +72,11 @@ actor SQLiteReader {
             let additions = sqlite3_column_type(stmt, 6) != SQLITE_NULL ? Int(sqlite3_column_int64(stmt, 6)) : nil
             let deletions = sqlite3_column_type(stmt, 7) != SQLITE_NULL ? Int(sqlite3_column_int64(stmt, 7)) : nil
             let files = sqlite3_column_type(stmt, 8) != SQLITE_NULL ? Int(sqlite3_column_int64(stmt, 8)) : nil
+
+            let limit = countPerDir[directory] ?? 1
+            let seen = seenPerDir[directory, default: 0]
+            guard seen < limit else { continue }
+            seenPerDir[directory] = seen + 1
 
             var summary: OCSessionSummary?
             if let a = additions, let d = deletions, let f = files {
