@@ -9,5 +9,6 @@ struct AvatarView: View {
         SpriteView(scene: scene, options: [.allowsTransparency])
             .frame(width: 36, height: 36)
             .background(.clear)
+            .allowsHitTesting(false)
     }
 }
