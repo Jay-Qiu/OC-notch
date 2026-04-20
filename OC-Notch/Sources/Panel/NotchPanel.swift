@@ -25,9 +25,9 @@ final class ClickCatcherWindow: NSWindow {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    init() {
+    init(screen: NSScreen?) {
         super.init(
-            contentRect: NSScreen.main?.frame ?? .zero,
+            contentRect: screen?.frame ?? NSScreen.main?.frame ?? .zero,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -129,7 +129,7 @@ final class NotchPanelController {
     private func updateClickOutsideMonitor(expanded: Bool) {
         if expanded {
             guard clickCatcher == nil else { return }
-            let catcher = ClickCatcherWindow()
+            let catcher = ClickCatcherWindow(screen: NSScreen.targetScreen)
             catcher.onMouseDown = { [weak self] in
                 NotificationCenter.default.post(name: .notchClickedOutside, object: nil)
             }
@@ -145,18 +145,20 @@ final class NotchPanelController {
     // MARK: - Notch Geometry
 
     private func calculateNotchFrame(expanded: Bool) -> NSRect {
-        guard let screen = NSScreen.main else {
+        guard let screen = NSScreen.targetScreen else {
             return NSRect(x: 0, y: 0, width: 400, height: Self.collapsedHeight)
         }
 
         let screenFrame = screen.frame
 
         let notchWidth: CGFloat
-        if let leftArea = screen.auxiliaryTopLeftArea,
+        if screen.hasNotch,
+           let leftArea = screen.auxiliaryTopLeftArea,
            let rightArea = screen.auxiliaryTopRightArea {
             let notchW = rightArea.minX - leftArea.maxX
             notchWidth = notchW + 160
         } else {
+            // No notch: use a reasonable pill width for top-center overlay
             notchWidth = 400
         }
 

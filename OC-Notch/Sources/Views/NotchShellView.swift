@@ -11,6 +11,7 @@ struct NotchShellView: View {
     @State private var permissionQueue = PermissionQueueManager()
     @State private var notchState: NotchState = .collapsed
     @State private var isHovering = false
+    @State private var clickOutsideMonitor: Any?
 
     var onExpandChange: ((Bool) -> Void)?
 
@@ -226,9 +227,8 @@ struct NotchShellView: View {
             guard clickOutsideMonitor == nil else { return }
             clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [self] event in
                 guard let panel = NSApp.windows.first(where: { $0 is NotchPanel }) else { return }
-                let locationInScreen = event.locationInWindow
-                // Global events report location in screen coordinates
-                if !panel.frame.contains(locationInScreen) {
+                let mouseLocation = NSEvent.mouseLocation
+                if !panel.frame.contains(mouseLocation) {
                     notchState = .collapsed
                 }
             }
@@ -243,7 +243,7 @@ struct NotchShellView: View {
     // MARK: - Notch Width
 
     private var notchWidth: CGFloat {
-        guard let screen = NSScreen.main,
+        guard let screen = NSScreen.targetScreen,
               let leftArea = screen.auxiliaryTopLeftArea,
               let rightArea = screen.auxiliaryTopRightArea else {
             return 180
