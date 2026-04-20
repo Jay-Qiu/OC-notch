@@ -74,28 +74,31 @@ struct NotchShellView: View {
     // MARK: - Notch Bar
 
     private var notchBar: some View {
-        HStack(spacing: 0) {
-            AvatarView(scene: avatarScene)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+        Button(action: toggleDropdown) {
+            HStack(spacing: 0) {
+                AvatarView(scene: avatarScene)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
 
-            Spacer()
-                .frame(width: notchWidth)
+                Spacer()
+                    .frame(width: notchWidth)
 
-            SessionCounterView(onTap: toggleDropdown)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(height: 36)
-        .padding(.horizontal, 8)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
-                    .fill(DS.Colors.pillBackground)
-                RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .opacity(isHovering && notchState == .collapsed ? 1 : 0)
+                SessionCounterView()
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .animation(DS.Animations.smooth, value: isHovering)
-        )
+            .frame(height: 36)
+            .padding(.horizontal, 8)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
+                        .fill(DS.Colors.pillBackground)
+                    RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(isHovering && notchState == .collapsed ? 1 : 0)
+                }
+                .animation(DS.Animations.smooth, value: isHovering)
+            )
+        }
+        .buttonStyle(.plain)
         .onHover { hovering in
             isHovering = hovering
         }
