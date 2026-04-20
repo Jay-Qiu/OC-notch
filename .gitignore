@@ -1,0 +1,15 @@
+# Build artifacts
+build/
+OC-Notch/build/
+*.zip
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# Generated icon (source is in Assets.xcassets)
+/AppIcon.png
+
+# macOS
+.DS_Store
