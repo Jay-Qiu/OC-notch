@@ -16,6 +16,15 @@ struct NotchShellView: View {
     /// until the user clicks the notch bar or a *new* request arrives.
     @State private var userDismissed = false
 
+    // Screen-geometry state — reactive so SwiftUI re-renders on display changes
+    @State private var currentDisplayScale: CGFloat = NSScreen.targetScreen?.displayScaleFactor ?? 1.0
+    @State private var currentNotchWidth: CGFloat = {
+        guard let screen = NSScreen.targetScreen,
+              let leftArea = screen.auxiliaryTopLeftArea,
+              let rightArea = screen.auxiliaryTopRightArea else { return 180 }
+        return rightArea.minX - leftArea.maxX
+    }()
+
     var onExpandChange: ((Bool) -> Void)?
 
     var body: some View {
@@ -91,6 +100,9 @@ struct NotchShellView: View {
                 break
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            updateScreenMetrics()
+        }
     }
 
     // MARK: - Notch Bar
@@ -98,19 +110,19 @@ struct NotchShellView: View {
     private var notchBar: some View {
         Button(action: toggleDropdown) {
             HStack(spacing: 0) {
-                AvatarView(scene: avatarScene)
+                AvatarView(scene: avatarScene, size: 36 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.trailing, 12)
 
                 Spacer()
-                    .frame(width: notchWidth)
+                    .frame(width: currentNotchWidth)
 
                 SessionCounterView()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 12)
             }
-            .frame(height: 36)
-            .frame(maxWidth: notchWidth + 140)
+            .frame(height: 36 * currentDisplayScale)
+            .frame(maxWidth: currentNotchWidth + 140 * currentDisplayScale)
             .padding(.horizontal, 8)
             .background(
                 ZStack {
@@ -278,17 +290,17 @@ struct NotchShellView: View {
 
     // MARK: - Notch Width
 
-    private var notchWidth: CGFloat {
-        guard let screen = NSScreen.targetScreen,
-              let leftArea = screen.auxiliaryTopLeftArea,
-              let rightArea = screen.auxiliaryTopRightArea else {
-            return 180
-        }
-        return rightArea.minX - leftArea.maxX
+    private var pillWidth: CGFloat {
+        max(currentNotchWidth + 220 * currentDisplayScale, 460 * currentDisplayScale)
     }
 
-    private var pillWidth: CGFloat {
-        max(notchWidth + 220, 460)
+    private func updateScreenMetrics() {
+        currentDisplayScale = NSScreen.targetScreen?.displayScaleFactor ?? 1.0
+        if let screen = NSScreen.targetScreen,
+           let leftArea = screen.auxiliaryTopLeftArea,
+           let rightArea = screen.auxiliaryTopRightArea {
+            currentNotchWidth = rightArea.minX - leftArea.maxX
+        }
     }
 }
 

@@ -152,17 +152,24 @@ final class NotchPanelController {
         let screenFrame = screen.frame
 
         let notchWidth: CGFloat
+        let height: CGFloat
+
         if screen.hasNotch,
            let leftArea = screen.auxiliaryTopLeftArea,
            let rightArea = screen.auxiliaryTopRightArea {
             let notchW = rightArea.minX - leftArea.maxX
-            notchWidth = expanded ? notchW + 380 : notchW + 160
+            let scale = screen.displayScaleFactor
+            let collapsedPad = 160 * scale
+            let expandedPad = 380 * scale
+
+            notchWidth = expanded ? notchW + expandedPad : notchW + collapsedPad
+            height = expanded ? Self.expandedHeight * scale : Self.collapsedHeight * scale
         } else {
             notchWidth = expanded ? 580 : 400
+            height = expanded ? Self.expandedHeight : Self.collapsedHeight
         }
 
         let width = min(notchWidth, screenFrame.width)
-        let height = expanded ? Self.expandedHeight : Self.collapsedHeight
         let x = screenFrame.origin.x + (screenFrame.width - width) / 2
         let y = screenFrame.maxY - height
 
