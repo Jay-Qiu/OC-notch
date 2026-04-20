@@ -6,13 +6,14 @@ struct TaskCompletionView: View {
     let completion: TaskCompletionInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: DS.Spacing.sectionSpacing) {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .font(.system(size: 16))
+                    .foregroundStyle(DS.Colors.accentGreen)
                 Text(completion.sessionTitle)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .font(DS.Typography.title())
+                    .foregroundStyle(DS.Colors.textPrimary)
                     .lineLimit(1)
                 Spacer()
 
@@ -21,7 +22,7 @@ struct TaskCompletionView: View {
                 } label: {
                     HStack(spacing: 3) {
                         Text("Open")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(DS.Typography.caption())
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8))
                     }
@@ -32,8 +33,8 @@ struct TaskCompletionView: View {
 
             if let summary = completion.summary {
                 Text(summary)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .font(DS.Typography.body())
+                    .foregroundStyle(DS.Colors.textPrimary.opacity(0.8))
                     .lineLimit(2)
             }
 
@@ -41,26 +42,28 @@ struct TaskCompletionView: View {
                 HStack(spacing: 12) {
                     if let files = completion.filesChanged, files > 0 {
                         Label("\(files) files", systemImage: "doc")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .font(DS.Typography.stats())
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
                     if let additions = completion.additions, additions > 0 {
                         Text("+\(additions)")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.green)
+                            .font(DS.Typography.stats())
+                            .foregroundStyle(DS.Colors.accentGreen)
                     }
                     if let deletions = completion.deletions, deletions > 0 {
                         Text("-\(deletions)")
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.red)
+                            .font(DS.Typography.stats())
+                            .foregroundStyle(DS.Colors.accentRed)
                     }
                 }
+                .padding(.horizontal, DS.Spacing.sectionSpacing)
+                .padding(.vertical, DS.Spacing.tightSpacing)
+                .background(
+                    RoundedRectangle(cornerRadius: DS.Radii.small, style: .continuous)
+                        .fill(DS.Colors.elevatedSurface)
+                )
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
-        )
+        .dsCardBackground()
     }
 }

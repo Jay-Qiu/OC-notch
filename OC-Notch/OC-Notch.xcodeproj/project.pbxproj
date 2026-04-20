@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0647BFE10C46E1EBBF7A3C88 /* TaskCompletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C9F68B286B396193F4A154 /* TaskCompletionView.swift */; };
+		065FC25C290B27857E681AA0 /* QuestionRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D917636F7AEBA23D9243F39 /* QuestionRequestView.swift */; };
 		105EFF36274A8BBAEE20B3EA /* SessionMonitorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0638468C107713223A6BA24C /* SessionMonitorService.swift */; };
 		10E883C6E41A9D44B53D80C3 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F392851E0F2072B20CD4E070 /* AvatarView.swift */; };
 		23B4647D1F1A95E34F2DACD4 /* SessionCounterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532B97451217BB6A3FFB39C4 /* SessionCounterView.swift */; };
@@ -19,11 +20,11 @@
 		80DC96CE0E8B65A38F0460F8 /* CompletionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EA1DA258A9EB301192C124 /* CompletionDetector.swift */; };
 		8DB7914AD05601F1A67DE673 /* PixelSpriteGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF5210FA234215947EF9947 /* PixelSpriteGenerator.swift */; };
 		936745CB3EF985672B3B1D11 /* PermissionRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9C764163815D2D98E55B7 /* PermissionRequestView.swift */; };
-		43F1B91BF6328017805199B6 /* QuestionRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A099EADD002CAEFA1EA4E576 /* QuestionRequestView.swift */; };
 		A201F4BADD74EBF0390E221C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA5E4034816BB464B716254 /* Models.swift */; };
 		B8B936ECF0C5760BA664CD79 /* AvatarScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB89A4EA65170241F19BA916 /* AvatarScene.swift */; };
 		C2857CFD16CA87FCCCDA1B9C /* OCNotchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0BE59C240376664A13B92 /* OCNotchApp.swift */; };
 		C533157F663E7AFDB86A2B5C /* ProcessScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8611B2A191752D13FE8057F /* ProcessScanner.swift */; };
+		D7F8F45570CDE47A9CD63F0A /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E4F2091020A2E2CCE2CD5B /* DesignSystem.swift */; };
 		DC4F1EC917D4D000EEABFA88 /* PermissionQueueManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5241CEDC4834FDD682B28077 /* PermissionQueueManager.swift */; };
 		DCB529291A311EB547FA0A30 /* NotchPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5F2B1471ECDD13185B0BA1 /* NotchPanel.swift */; };
 		DEE3B75D54A084FAD0F39B61 /* OpenCodeHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A674B4DCAAA07E7CB1659357 /* OpenCodeHTTPClient.swift */; };
@@ -38,8 +39,9 @@
 		12292AE7085BD4B2C64A6BDE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		15C9F68B286B396193F4A154 /* TaskCompletionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCompletionView.swift; sourceTree = "<group>"; };
 		25C9C764163815D2D98E55B7 /* PermissionRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionRequestView.swift; sourceTree = "<group>"; };
-		A099EADD002CAEFA1EA4E576 /* QuestionRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionRequestView.swift; sourceTree = "<group>"; };
 		260B105455CDA4566B99E345 /* OC_Notch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OC_Notch.entitlements; sourceTree = "<group>"; };
+		2D917636F7AEBA23D9243F39 /* QuestionRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionRequestView.swift; sourceTree = "<group>"; };
+		40E4F2091020A2E2CCE2CD5B /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		44C640028693BA68BDFC1478 /* SessionDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDropdownView.swift; sourceTree = "<group>"; };
 		50EDAF3636B137DA7A6C7BD1 /* NotchShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchShellView.swift; sourceTree = "<group>"; };
 		5241CEDC4834FDD682B28077 /* PermissionQueueManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionQueueManager.swift; sourceTree = "<group>"; };
@@ -80,9 +82,10 @@
 		1B3EF9D424531452A09AB7F6 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				40E4F2091020A2E2CCE2CD5B /* DesignSystem.swift */,
 				50EDAF3636B137DA7A6C7BD1 /* NotchShellView.swift */,
 				25C9C764163815D2D98E55B7 /* PermissionRequestView.swift */,
-				A099EADD002CAEFA1EA4E576 /* QuestionRequestView.swift */,
+				2D917636F7AEBA23D9243F39 /* QuestionRequestView.swift */,
 				532B97451217BB6A3FFB39C4 /* SessionCounterView.swift */,
 				44C640028693BA68BDFC1478 /* SessionDropdownView.swift */,
 				15C9F68B286B396193F4A154 /* TaskCompletionView.swift */,
@@ -226,6 +229,7 @@
 				6E9C35D0079245635200199D /* AvatarStateManager.swift in Sources */,
 				10E883C6E41A9D44B53D80C3 /* AvatarView.swift in Sources */,
 				80DC96CE0E8B65A38F0460F8 /* CompletionDetector.swift in Sources */,
+				D7F8F45570CDE47A9CD63F0A /* DesignSystem.swift in Sources */,
 				A201F4BADD74EBF0390E221C /* Models.swift in Sources */,
 				DCB529291A311EB547FA0A30 /* NotchPanel.swift in Sources */,
 				F54AEAE713AEC2E513F5F43F /* NotchShellView.swift in Sources */,
@@ -235,9 +239,9 @@
 				2E6E3A47F8484F0052D1EDC2 /* OpenCodeServerManager.swift in Sources */,
 				DC4F1EC917D4D000EEABFA88 /* PermissionQueueManager.swift in Sources */,
 				936745CB3EF985672B3B1D11 /* PermissionRequestView.swift in Sources */,
-				43F1B91BF6328017805199B6 /* QuestionRequestView.swift in Sources */,
 				8DB7914AD05601F1A67DE673 /* PixelSpriteGenerator.swift in Sources */,
 				C533157F663E7AFDB86A2B5C /* ProcessScanner.swift in Sources */,
+				065FC25C290B27857E681AA0 /* QuestionRequestView.swift in Sources */,
 				E81A68F6BEF28B323AF2D665 /* SQLiteReader.swift in Sources */,
 				23B4647D1F1A95E34F2DACD4 /* SessionCounterView.swift in Sources */,
 				4EE8372683BD266B865E8C92 /* SessionDropdownView.swift in Sources */,

@@ -98,7 +98,7 @@ final class NotchPanelController {
         if let leftArea = screen.auxiliaryTopLeftArea,
            let rightArea = screen.auxiliaryTopRightArea {
             let notchW = rightArea.minX - leftArea.maxX
-            notchWidth = notchW + 240
+            notchWidth = notchW + 160
         } else {
             notchWidth = 400
         }
