@@ -98,10 +98,12 @@ echo -e "${GREEN}→ Created mailmap: ${OLD_NAME} <${OLD_EMAIL}> → ${NEW_NAME}
 # ─── Create blob replacement expressions ─────────────────────────
 REPLACEMENTS_FILE=$(mktemp)
 cat > "$REPLACEMENTS_FILE" <<EOF
+literal:${OLD_EMAIL}==>literal:${NEW_EMAIL}
 literal:${TEAM_ID}==>literal:REDACTED_TEAM_ID
 literal:${FULL_NAME}==>literal:REDACTED_NAME
 literal:Developer ID Application: ${FULL_NAME}==>literal:Developer ID Application: REDACTED_NAME
 regex:xcuserdata/${MACOS_USER}\.xcuserdatad==>xcuserdata/developer.xcuserdatad
+regex:MACOS_USER="${MACOS_USER}"==>MACOS_USER="developer"
 EOF
 echo -e "${GREEN}→ Created content replacement rules${NC}"
 
