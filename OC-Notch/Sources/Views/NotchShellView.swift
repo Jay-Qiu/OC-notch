@@ -112,17 +112,18 @@ struct NotchShellView: View {
             HStack(spacing: 0) {
                 AvatarView(scene: avatarScene, size: 36 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .clipped()
 
                 Spacer()
                     .frame(width: currentNotchWidth)
 
                 SessionCounterView()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 12)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .clipped()
             }
             .frame(height: 36 * currentDisplayScale)
-            .frame(maxWidth: currentNotchWidth + 140 * currentDisplayScale)
-            .padding(.horizontal, 8)
+            .frame(maxWidth: currentNotchWidth + 100 * currentDisplayScale)
+            .padding(.horizontal, 8 * currentDisplayScale)
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
