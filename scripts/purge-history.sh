@@ -118,7 +118,7 @@ echo -e "${YELLOW}→ Rewriting history (this may take a moment)...${NC}"
 git filter-repo \
     --mailmap "$MAILMAP_FILE" \
     --replace-text "$REPLACEMENTS_FILE" \
-    --path-rename "xcuserdata/${MACOS_USER}.xcuserdatad:xcuserdata/developer.xcuserdatad" \
+    --filename-callback "return filename.replace(b'${MACOS_USER}.xcuserdatad', b'developer.xcuserdatad')" \
     --force
 
 echo -e "${GREEN}→ History rewritten successfully!${NC}"
