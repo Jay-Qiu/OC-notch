@@ -50,33 +50,8 @@ publish: check-clean
 ifdef V
 	@$(MAKE) --no-print-directory _do-publish V=$(V)
 else
-	@CURRENT=$$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" $(PROJECT_DIR)/Sources/App/Info.plist); \
-	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
-	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
-	PATCH=$$(echo $$CURRENT | cut -d. -f3); \
-	echo ""; \
-	echo "Current version: $$CURRENT"; \
-	echo ""; \
-	echo "  1) patch  → $$MAJOR.$$MINOR.$$((PATCH + 1))   (bug fixes)"; \
-	echo "  2) minor  → $$MAJOR.$$((MINOR + 1)).0   (new features)"; \
-	echo "  3) major  → $$((MAJOR + 1)).0.0   (breaking changes)"; \
-	echo ""; \
-	printf "Select bump type [1/2/3]: "; \
-	read CHOICE; \
-	case $$CHOICE in \
-		1|patch)  NEW_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" ;; \
-		2|minor)  NEW_VERSION="$$MAJOR.$$((MINOR + 1)).0" ;; \
-		3|major)  NEW_VERSION="$$((MAJOR + 1)).0.0" ;; \
-		*)        echo "❌ Invalid choice."; exit 1 ;; \
-	esac; \
-	echo ""; \
-	printf "→ Will publish v$$NEW_VERSION. Continue? [Y/n] "; \
-	read CONFIRM; \
-	case $$CONFIRM in \
-		""|y|Y|yes|Yes) ;; \
-		*) echo "Aborted."; exit 1 ;; \
-	esac; \
-	$(MAKE) --no-print-directory _do-publish V=$$NEW_VERSION
+	@NEW_V=$$(bash scripts/select-version.sh $(PROJECT_DIR)/Sources/App/Info.plist) && \
+		$(MAKE) --no-print-directory _do-publish V=$$NEW_V
 endif
 
 _do-publish: bump release git-tag gh-release
