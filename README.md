@@ -1,45 +1,144 @@
-# OC-Notch
+<p align="center">
+  <img src="icon.png" width="128" height="128" alt="OC-Notch icon" />
+</p>
 
-A macOS notch companion for [OpenCode](https://github.com/nicepkg/OpenCode). Lives in your MacBook's notch and gives you real-time visibility into your AI coding sessions — task completions, permission requests, session counts — without leaving your editor.
+<h1 align="center">OC-Notch</h1>
 
-## Features
+<p align="center">
+  <strong>Your AI agent lives in the notch now.</strong><br/>
+  A Dynamic Island–inspired companion for <a href="https://github.com/nicepkg/OpenCode">OpenCode</a> that turns your MacBook's dead pixel real estate into a living, breathing command center for AI coding sessions.
+</p>
 
-- **Notch overlay** — seamlessly integrates with the MacBook notch area
-- **Session monitoring** — tracks active OpenCode sessions via SSE + SQLite
-- **Permission prompts** — surfaces permission requests from OpenCode so you never miss them
-- **Task completion alerts** — know instantly when your AI agent finishes work
-- **Pixel avatar** — animated companion that reacts to session state
+<p align="center">
+  <a href="../../releases"><img src="https://img.shields.io/github/v/release/nicepkg/OC-notch?style=flat-square&color=00c8ff" alt="Release" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS_14%2B-000?style=flat-square&logo=apple&logoColor=white" alt="macOS 14+" />
+  <img src="https://img.shields.io/badge/swift-6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6" />
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" />
+</p>
 
-## Requirements
+<!-- <p align="center">
+  <img src="assets/demo.gif" width="720" alt="OC-Notch demo" />
+</p> -->
 
-- macOS 14.0+
-- MacBook with notch (works on any Mac, but designed for notch displays)
-- [OpenCode](https://github.com/nicepkg/OpenCode) running locally
+---
 
-## Installation
+## The Problem
 
-### Download (Recommended)
+You're deep in flow. Your AI agent is running — writing code, refactoring modules, spinning up tests. Then it needs permission to run a shell command. Or it finishes a task. Or it has a question.
 
-1. Go to [Releases](../../releases)
-2. Download the latest `.zip`
-3. Unzip and drag **OC-Notch.app** to `/Applications`
-4. Double-click to open — the app is signed and notarized by Apple
+**You don't notice.** It's sitting there, blocked, waiting in a terminal tab you haven't looked at in 10 minutes. Time wasted. Flow broken.
 
-### Build from source
+## The Fix
+
+OC-Notch hugs your MacBook's notch and watches your OpenCode sessions in real-time. Permissions pop up instantly. Completions celebrate. Questions get answered. All without leaving your editor.
+
+**Zero context switches. Zero missed prompts. Zero wasted minutes.**
+
+---
+
+## ✨ Features
+
+### 🎮 Pixel Avatar Companion
+A procedurally generated pixel-art character lives next to your notch. It **breathes** when idle, **thinks** when your agent is working, **alerts** when permissions are needed, and **dances** when tasks complete. It's your agent's face.
+
+### ⚡ Instant Permission Handling
+Agent needs to run `rm -rf node_modules`? The notch expands with a Dynamic Island–style animation showing exactly what's requested. **⌘Y** to allow, **⌘A** for always, **⌘N** to reject. Sub-second response times — your agent never waits.
+
+### ❓ Interactive Question Prompts
+When your agent asks questions (single-select, multi-select, or free-text), they surface directly in the notch. Answer with keyboard shortcuts or click through options. Multi-step question flows with back/forward navigation.
+
+### 🎉 Task Completion Notifications
+See the moment your agent finishes — with a summary of what changed, files modified, lines added/removed. One-click **Open** button jumps straight to the terminal session.
+
+### 📊 Session Dashboard
+Click the notch to see all active OpenCode sessions at a glance. Session status, project directories, activity indicators — everything in a compact dropdown.
+
+### 🎨 Dynamic Island Design Language
+Inspired by iPhone's Dynamic Island: fluid spring animations, blur transitions, dark pill UI that melts into the notch hardware. Feels native because it is.
+
+---
+
+## Quick Start
+
+### Install (Recommended)
+
+1. Download the latest `.zip` from [**Releases**](../../releases)
+2. Drag **OC-Notch.app** to `/Applications`
+3. Open it — signed and notarized by Apple, no Gatekeeper hassle
+
+### Build from Source
 
 ```bash
-# Requires Xcode 16+ and XcodeGen
 brew install xcodegen
 cd OC-Notch
 xcodegen generate
 open OC-Notch.xcodeproj
-# Build & Run (⌘R)
+# ⌘R to build & run
 ```
 
-### Release (maintainers)
+### Use It
+
+1. Start [OpenCode](https://github.com/nicepkg/OpenCode) in any terminal
+2. Launch OC-Notch — it auto-discovers running instances via process scanning
+3. Hover the notch to peek at status, click to expand the dashboard
+4. Handle permissions & questions directly from the notch with keyboard shortcuts
+
+---
+
+## Keyboard Shortcuts
+
+| Action | Shortcut |
+|---|---|
+| Allow permission (once) | `⌘Y` |
+| Allow permission (always) | `⌘A` |
+| Reject permission | `⌘N` |
+| Select option 1–9 | `⌘1` – `⌘9` |
+| Submit multi-select | `⌘↵` |
+
+---
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────┐
+│                  MacBook Notch               │
+│   [Pixel Avatar]  ▓▓▓▓▓▓▓▓  [Session Count] │
+│                                              │
+│   Hover → peek  •  Click → expand dropdown   │
+│                                              │
+│   ┌──────────────────────────────────────┐   │
+│   │  Permission / Question / Completion  │   │
+│   │  (expands with spring animation)     │   │
+│   └──────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+
+OpenCode Process ──→ SSE Stream ──→ OC-Notch
+                ──→ HTTP API   ──→ (permissions, questions)
+                ──→ SQLite DB  ──→ (session history)
+```
+
+OC-Notch discovers OpenCode instances by scanning running processes, connects via **Server-Sent Events** for real-time updates, reads session data from **SQLite**, and responds to permissions/questions through the **HTTP API**. All local. No cloud. No telemetry.
+
+---
+
+## Tech Stack
+
+| | |
+|---|---|
+| **Language** | Swift 6 with strict concurrency |
+| **UI** | SwiftUI + SpriteKit (avatar) |
+| **Window** | AppKit `NSPanel` overlay — no dock icon, no menu bar clutter |
+| **Networking** | Native `URLSession` SSE client |
+| **Storage** | Direct SQLite reader (no ORM overhead) |
+| **Build** | XcodeGen + Makefile release pipeline |
+| **Signing** | Apple notarized & stapled |
+
+---
+
+## Release (Maintainers)
 
 ```bash
-# One-time setup: store notarization credentials in Keychain
+# One-time: store notarization credentials
 xcrun notarytool store-credentials "OC-Notch-Notarize" \
   --apple-id "YOUR_APPLE_ID" \
   --team-id "literal:REDACTED_TEAM_ID" \
@@ -49,21 +148,25 @@ xcrun notarytool store-credentials "OC-Notch-Notarize" \
 make release
 ```
 
-## Usage
+---
 
-1. Start OpenCode in your terminal
-2. Launch OC-Notch — it auto-detects running OpenCode processes
-3. Hover over the notch to see session status
-4. Click to expand the dropdown with session details
+## Contributing
 
-## Tech Stack
+PRs welcome. The codebase is organized by feature:
 
-- Swift 6 / SwiftUI
-- AppKit (NSPanel overlay, no main window)
-- SSE client for real-time OpenCode events
-- SQLite reader for session history
-- XcodeGen for project generation
+```
+OC-Notch/Sources/
+├── App/           # App delegate, entry point
+├── Avatar/        # SpriteKit pixel avatar + procedural generation
+├── Models/        # Data models (sessions, permissions, events)
+├── Monitor/       # SSE client, SQLite reader, process scanner
+├── Panel/         # NSPanel overlay (notch window management)
+├── Utilities/     # Terminal launcher, screen extensions
+└── Views/         # SwiftUI views (notch shell, dropdowns, prompts)
+```
+
+---
 
 ## License
 
-MIT
+MIT — do whatever you want with it.
