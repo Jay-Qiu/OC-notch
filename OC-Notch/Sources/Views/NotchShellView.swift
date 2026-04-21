@@ -111,6 +111,7 @@ struct NotchShellView: View {
         Button(action: toggleDropdown) {
             HStack(spacing: 0) {
                 AvatarView(scene: avatarScene, size: 36 * currentDisplayScale)
+                    .padding(.trailing, 8 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .clipped()
 
@@ -118,6 +119,7 @@ struct NotchShellView: View {
                     .frame(width: currentNotchWidth)
 
                 SessionCounterView()
+                    .padding(.leading, 8 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
             .frame(height: 36 * currentDisplayScale)
