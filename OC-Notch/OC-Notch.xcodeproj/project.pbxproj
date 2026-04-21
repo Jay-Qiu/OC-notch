@@ -13,6 +13,7 @@
 		10E883C6E41A9D44B53D80C3 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F392851E0F2072B20CD4E070 /* AvatarView.swift */; };
 		23B4647D1F1A95E34F2DACD4 /* SessionCounterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532B97451217BB6A3FFB39C4 /* SessionCounterView.swift */; };
 		2E6E3A47F8484F0052D1EDC2 /* OpenCodeServerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76BE3D15519DADA5A3400D39 /* OpenCodeServerManager.swift */; };
+		4760FE9F4A1992D4B37132DA /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 8F40A7772D947A47867141A8 /* AppIcon.icns */; };
 		4EE8372683BD266B865E8C92 /* SessionDropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C640028693BA68BDFC1478 /* SessionDropdownView.swift */; };
 		5013936A97443CD49970FABF /* TerminalTabProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17981293552C95D3E2F49FF /* TerminalTabProbe.swift */; };
 		59E7C4AE32B0E96EECC86756 /* TerminalLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB57CD9F6A9AAC80151229D1 /* TerminalLauncher.swift */; };
@@ -54,6 +55,7 @@
 		79C53843D391D60D1BC2063D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		802CC127D8B587D080E76EED /* OC-Notch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OC-Notch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8DA5E4034816BB464B716254 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		8F40A7772D947A47867141A8 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		992AA0F7E4A38B930E7E0AAA /* SQLiteReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteReader.swift; sourceTree = "<group>"; };
 		A1C0BE59C240376664A13B92 /* OCNotchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCNotchApp.swift; sourceTree = "<group>"; };
 		A674B4DCAAA07E7CB1659357 /* OpenCodeHTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeHTTPClient.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 			isa = PBXGroup;
 			children = (
 				79C53843D391D60D1BC2063D /* AppDelegate.swift */,
+				8F40A7772D947A47867141A8 /* AppIcon.icns */,
 				00E3016F6EBFD317B9ED92D1 /* Assets.xcassets */,
 				12292AE7085BD4B2C64A6BDE /* Info.plist */,
 				260B105455CDA4566B99E345 /* OC_Notch.entitlements */,
@@ -234,6 +237,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4760FE9F4A1992D4B37132DA /* AppIcon.icns in Resources */,
 				E755889BCE1F2B6E9D360D43 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
