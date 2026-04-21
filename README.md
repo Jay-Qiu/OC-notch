@@ -23,7 +23,7 @@ A macOS notch companion for [OpenCode](https://github.com/nicepkg/OpenCode). Liv
 1. Go to [Releases](../../releases)
 2. Download the latest `.zip`
 3. Unzip and drag **OC-Notch.app** to `/Applications`
-4. Right-click → Open (first launch only, to bypass Gatekeeper)
+4. Double-click to open — the app is signed and notarized by Apple
 
 ### Build from source
 
@@ -34,6 +34,19 @@ cd OC-Notch
 xcodegen generate
 open OC-Notch.xcodeproj
 # Build & Run (⌘R)
+```
+
+### Release (maintainers)
+
+```bash
+# One-time setup: store notarization credentials in Keychain
+xcrun notarytool store-credentials "OC-Notch-Notarize" \
+  --apple-id "YOUR_APPLE_ID" \
+  --team-id "literal:REDACTED_TEAM_ID" \
+  --password "APP_SPECIFIC_PASSWORD"
+
+# Full pipeline: clean → build → sign → notarize → staple → zip
+make release
 ```
 
 ## Usage
