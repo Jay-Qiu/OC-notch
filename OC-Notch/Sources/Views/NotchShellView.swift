@@ -119,7 +119,6 @@ struct NotchShellView: View {
 
                 SessionCounterView()
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .clipped()
             }
             .frame(height: 36 * currentDisplayScale)
             .frame(maxWidth: currentNotchWidth + 100 * currentDisplayScale)
@@ -134,7 +133,7 @@ struct NotchShellView: View {
                 }
                 .animation(DS.Animations.smooth, value: isHovering)
             )
-            .clipShape(RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { hovering in
