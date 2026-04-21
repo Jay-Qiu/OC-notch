@@ -1,9 +1,10 @@
 #!/bin/bash
 # Interactive version selector with arrow keys
 # Usage: ./select-version.sh <Info.plist path>
-# Outputs: selected version string to stdout
+# Outputs: selected version string to stdout (all UI goes to /dev/tty)
 set -euo pipefail
 
+TTY=/dev/tty
 PLIST="${1:?Usage: select-version.sh <Info.plist>}"
 
 CURRENT=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$PLIST")
@@ -22,30 +23,28 @@ VERSIONS=("$V_PATCH" "$V_MINOR" "$V_MAJOR")
 COUNT=${#LABELS[@]}
 SEL=0
 
-# ─── Draw ────────────────────────────────────────────────────────
 draw() {
   for i in "${!LABELS[@]}"; do
-    tput el # clear line
+    tput el
     if [ "$i" -eq "$SEL" ]; then
       printf "  \033[1;36m❯ %s\033[0m\n" "${LABELS[$i]}"
     else
       printf "    %s\n" "${LABELS[$i]}"
     fi
   done
-}
+} > "$TTY"
 
-# ─── Main ────────────────────────────────────────────────────────
-echo ""
-echo "  Current version: $CURRENT"
-echo ""
-tput civis # hide cursor
+echo "" > "$TTY"
+echo "  Current version: $CURRENT" > "$TTY"
+echo "" > "$TTY"
+tput civis > "$TTY"
 draw
 
 while true; do
-  IFS= read -rsn1 key
+  IFS= read -rsn1 key < "$TTY"
   case "$key" in
     $'\x1b')
-      read -rsn2 rest
+      read -rsn2 rest < "$TTY"
       case "$rest" in
         '[A') ((SEL > 0)) && ((SEL--)) ;;          # up
         '[B') ((SEL < COUNT - 1)) && ((SEL++)) ;;   # down
@@ -53,19 +52,19 @@ while true; do
       ;;
     '') break ;; # enter
   esac
-  tput cuu "$COUNT"
+  tput cuu "$COUNT" > "$TTY"
   draw
 done
 
-tput cnorm # show cursor
-echo ""
+tput cnorm > "$TTY"
+echo "" > "$TTY"
 
 CHOSEN="${VERSIONS[$SEL]}"
-printf "  → Will publish \033[1mv%s\033[0m. Continue? [Y/n] " "$CHOSEN"
-read -r CONFIRM
+printf "  → Will publish \033[1mv%s\033[0m. Continue? [Y/n] " "$CHOSEN" > "$TTY"
+read -r CONFIRM < "$TTY"
 case "${CONFIRM:-y}" in
   y|Y|yes|Yes) ;;
-  *) echo "  Aborted."; exit 1 ;;
+  *) echo "  Aborted." > "$TTY"; exit 1 ;;
 esac
 
 echo "$CHOSEN"
