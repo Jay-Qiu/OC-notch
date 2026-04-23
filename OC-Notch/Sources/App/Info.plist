@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5.0</string>
+	<string>0.6.0</string>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>7</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
@@ -28,25 +28,12 @@
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-
-	<!-- Sparkle Auto-Update Configuration -->
-	<!-- Appcast feed URL: points to the latest GitHub Release asset -->
-	<key>SUFeedURL</key>
-	<string>https://github.com/Jay-Qiu/OC-notch/releases/latest/download/appcast.xml</string>
-
-	<!-- EdDSA public key for update signature verification.
-	     This is a PUBLIC key — safe to commit. It ships with the app binary.
-	     Generate it once with: make setup-sparkle && tmp/sparkle-tools/bin/generate_keys
-	     The tool stores the private key in your Keychain and prints the public key.
-	     Paste the public key below (replace the placeholder). -->
-	<key>SUPublicEDKey</key>
-    <string>aqMJf1uvsIV6KPSr/xPB1Lyd+KTGttcCcJ74PBQCPPc=</string>
-
-	<!-- Check for updates automatically on launch -->
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
-
-	<!-- Check interval: 21600 seconds = 6 hours -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/Jay-Qiu/OC-notch/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>aqMJf1uvsIV6KPSr/xPB1Lyd+KTGttcCcJ74PBQCPPc=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
 </dict>
