@@ -106,6 +106,7 @@ final class NotchPanelController {
         hostingView.autoresizingMask = [.width, .height]
 
         panel.contentView?.addSubview(hostingView)
+        panel.contentView?.menu = buildContextMenu()
         panel.orderFrontRegardless()
 
         self.panel = panel
@@ -174,6 +175,40 @@ final class NotchPanelController {
         let y = screenFrame.maxY - height
 
         return NSRect(x: x, y: y, width: width, height: height)
+    }
+
+    // MARK: - Context Menu
+
+    private func buildContextMenu() -> NSMenu {
+        let menu = NSMenu()
+
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let aboutItem = NSMenuItem(
+            title: "OC-Notch v\(version)",
+            action: NSSelectorFromString("orderFrontStandardAboutPanel:"),
+            keyEquivalent: ""
+        )
+        menu.addItem(aboutItem)
+
+        menu.addItem(.separator())
+
+        let updateItem = NSMenuItem(
+            title: "Chercher une mise à jour…",
+            action: NSSelectorFromString("checkForUpdates:"),
+            keyEquivalent: ""
+        )
+        menu.addItem(updateItem)
+
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(
+            title: "Quitter OC-Notch",
+            action: NSSelectorFromString("terminate:"),
+            keyEquivalent: "q"
+        )
+        menu.addItem(quitItem)
+
+        return menu
     }
 
     // MARK: - Screen Observation
