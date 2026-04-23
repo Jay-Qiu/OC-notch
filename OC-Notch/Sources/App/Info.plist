@@ -28,5 +28,26 @@
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+
+	<!-- Sparkle Auto-Update Configuration -->
+	<!-- Appcast feed URL: points to the latest GitHub Release asset -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/Jay-Qiu/OC-notch/releases/latest/download/appcast.xml</string>
+
+	<!-- EdDSA public key for update signature verification.
+	     This is a PUBLIC key — safe to commit. It ships with the app binary.
+	     Generate it once with: make setup-sparkle && tmp/sparkle-tools/bin/generate_keys
+	     The tool stores the private key in your Keychain and prints the public key.
+	     Paste the public key below (replace the placeholder). -->
+	<key>SUPublicEDKey</key>
+    <string>aqMJf1uvsIV6KPSr/xPB1Lyd+KTGttcCcJ74PBQCPPc=</string>
+
+	<!-- Check for updates automatically on launch -->
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+
+	<!-- Check interval: 21600 seconds = 6 hours -->
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
 </dict>
 </plist>
