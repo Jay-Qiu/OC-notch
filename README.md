@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases"><img src="https://img.shields.io/github/v/release/nicepkg/OC-notch?style=flat-square&color=00c8ff" alt="Release" /></a>
+  <a href="../../releases"><img src="https://img.shields.io/github/v/release/Jay-Qiu/OC-notch?style=flat-square&color=00c8ff" alt="Release" /></a>
   <img src="https://img.shields.io/badge/platform-macOS_14%2B-000?style=flat-square&logo=apple&logoColor=white" alt="macOS 14+" />
   <img src="https://img.shields.io/badge/swift-6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" />
@@ -167,6 +167,13 @@ OC-Notch/Sources/
 
 ---
 
+## Acknowledgments
+
+- [DynamicNotchKit](https://github.com/MrKai77/DynamicNotchKit) — blur transition design inspiration
+- [OpenCode](https://github.com/nicepkg/OpenCode) — the AI coding agent this project is built for
+
+---
+
 ## License
 
-MIT — do whatever you want with it.
+[MIT](LICENSE) — do whatever you want with it.
