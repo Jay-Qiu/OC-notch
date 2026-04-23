@@ -2,12 +2,14 @@
 # Usage:
 #   make publish           — interactive release (prompts for version bump type)
 #   make publish V=0.3.0   — explicit version release (skips prompt)
-#   make release           — build pipeline only (clean → build → sign → notarize → staple → zip)
+#   make release           — build pipeline only (clean → build → sign → notarize → staple → zip → appcast)
 #   make build             — build Release archive only
 #   make sign              — codesign the .app with Developer ID
 #   make notarize          — submit to Apple for notarization (waits for completion)
 #   make staple            — staple notarization ticket to .app
 #   make zip               — create distributable .zip
+#   make appcast           — sign zip with EdDSA + generate appcast.xml
+#   make setup-sparkle     — download Sparkle CLI tools (one-time)
 #   make clean             — remove build artifacts
 #
 # Prerequisites:
@@ -15,6 +17,7 @@
 #   2. Copy local.mk.example → local.mk and fill in your signing values
 #   3. Store notarization credentials (see local.mk.example for command)
 #   4. gh CLI authenticated (gh auth login)
+#   5. Sparkle EdDSA key generated (see local.mk.example for setup)
 
 # ─── Local config (signing identity, team ID) ───────────────────
 -include local.mk
@@ -22,6 +25,10 @@
 # ─── Configuration ───────────────────────────────────────────────
 APP_NAME        := OC-Notch
 BUNDLE_ID       := com.oc-notch.app
+
+# Sparkle CLI tools (downloaded via `make setup-sparkle`)
+SPARKLE_VERSION ?= 2.9.1
+SPARKLE_BIN     ?= tmp/sparkle-tools/bin
 
 # Validate required local config
 ifndef TEAM_ID
@@ -49,7 +56,7 @@ ZIP_NAME        := $(APP_NAME)-v$(VERSION).zip
 ZIP_PATH        := $(BUILD_DIR)/release/$(ZIP_NAME)
 
 # ─── Targets ─────────────────────────────────────────────────────
-.PHONY: release publish _do-publish bump build sign notarize staple zip clean generate check-clean
+.PHONY: release publish _do-publish bump build sign notarize staple zip appcast setup-sparkle clean generate check-clean
 
 # ─── Publish: interactive or explicit release ─────────────────────
 # Interactive: make publish        (prompts for patch/minor/major)
@@ -98,13 +105,14 @@ gh-release:
 	else \
 		CHANGELOG=$$(git log --pretty=format:"- %s"); \
 	fi; \
-	gh release create "v$(V)" $(ZIP_PATH) \
+	gh release create "v$(V)" $(ZIP_PATH) $(BUILD_DIR)/release/appcast.xml \
 		--title "v$(V)" \
 		--notes "$$CHANGELOG"
 
-release: clean generate build sign notarize staple zip
+release: clean generate build sign notarize staple zip appcast
 	@echo ""
 	@echo "✅ Release complete: $(ZIP_PATH)"
+	@echo "   Appcast:          $(BUILD_DIR)/release/appcast.xml"
 	@echo "   Ready to upload to GitHub Releases."
 
 generate:
@@ -163,3 +171,30 @@ zip:
 clean:
 	@echo "→ Cleaning build artifacts..."
 	rm -rf $(BUILD_DIR)
+
+# ─── Sparkle auto-update ─────────────────────────────────────────
+
+appcast: $(ZIP_PATH)
+	@echo "→ Generating Sparkle appcast..."
+	@mkdir -p $(BUILD_DIR)/appcast
+	@cp $(ZIP_PATH) $(BUILD_DIR)/appcast/
+	$(SPARKLE_BIN)/generate_appcast $(BUILD_DIR)/appcast \
+		--download-url-prefix "$(REPO_URL)/releases/download/v$(VERSION)/"
+	@cp $(BUILD_DIR)/appcast/appcast.xml $(BUILD_DIR)/release/appcast.xml
+	@echo "→ Appcast generated: $(BUILD_DIR)/release/appcast.xml"
+
+setup-sparkle:
+	@echo "→ Downloading Sparkle $(SPARKLE_VERSION) CLI tools..."
+	@mkdir -p tmp
+	@curl -L --fail -o tmp/Sparkle-$(SPARKLE_VERSION).tar.xz \
+		"https://github.com/sparkle-project/Sparkle/releases/download/$(SPARKLE_VERSION)/Sparkle-$(SPARKLE_VERSION).tar.xz"
+	@mkdir -p tmp/sparkle-tools
+	@tar -xf tmp/Sparkle-$(SPARKLE_VERSION).tar.xz -C tmp/sparkle-tools
+	@rm -f tmp/Sparkle-$(SPARKLE_VERSION).tar.xz
+	@echo "✅ Sparkle tools installed at $(SPARKLE_BIN)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Generate EdDSA keypair:  $(SPARKLE_BIN)/generate_keys"
+	@echo "     → Private key is stored in your Keychain (NEVER export it)"
+	@echo "     → Copy the printed public key into Info.plist SUPublicEDKey"
+	@echo "  2. Run 'make release' to build with Sparkle appcast"

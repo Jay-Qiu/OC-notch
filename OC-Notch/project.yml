@@ -7,6 +7,11 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.0"
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -22,6 +27,8 @@ targets:
     platform: macOS
     sources:
       - Sources
+    dependencies:
+      - package: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.oc-notch.app

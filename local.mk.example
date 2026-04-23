@@ -16,3 +16,14 @@ KEYCHAIN_PROFILE := OC-Notch-Notarize
 #     --apple-id "your@email.com" \
 #     --team-id "$(TEAM_ID)" \
 #     --password "YOUR_APP_SPECIFIC_PASSWORD"
+
+# ─── Sparkle Auto-Update ─────────────────────────────────────────
+# One-time setup:
+#   1. make setup-sparkle              (downloads Sparkle CLI tools)
+#   2. tmp/sparkle-tools/bin/generate_keys  (generates EdDSA keypair)
+#      → Private key: stored in your macOS Keychain — NEVER export or commit it
+#      → Public key:  printed to stdout — paste it into Info.plist SUPublicEDKey
+#
+# Override Sparkle version or tools path if needed:
+# SPARKLE_VERSION := 2.9.1
+# SPARKLE_BIN     := /custom/path/to/sparkle/bin
