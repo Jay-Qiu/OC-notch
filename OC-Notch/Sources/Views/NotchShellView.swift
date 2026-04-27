@@ -126,6 +126,7 @@ struct NotchShellView: View {
                     .padding(.leading, 8 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
+            .opacity(pillRevealOpacity)
             .frame(height: 36 * currentDisplayScale)
             .frame(maxWidth: currentNotchWidth + 100 * currentDisplayScale)
             .padding(.horizontal, 8 * currentDisplayScale)
@@ -133,12 +134,15 @@ struct NotchShellView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
                         .fill(DS.Colors.pillBackground)
+                        .opacity(pillRevealOpacity)
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
                         .fill(.ultraThinMaterial)
                         .opacity(isHovering && notchState == .collapsed ? 1 : 0)
                     NeoHaloOverlay(state: currentHaloState, cornerRadius: DS.Radii.compactBottom)
                 }
                 .animation(DS.Animations.smooth, value: isHovering)
+                .animation(DS.Animations.smooth, value: themeManager.current)
+                .animation(DS.Animations.smooth, value: notchState)
             )
             .contentShape(RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous))
         }
@@ -146,6 +150,15 @@ struct NotchShellView: View {
         .onHover { hovering in
             isHovering = hovering
         }
+    }
+
+    /// Opacity of the visible pill (background + content). In Neo theme the pill
+    /// is hidden at rest so only the halo is visible, and reappears on hover or
+    /// when the notch is expanded.
+    private var pillRevealOpacity: Double {
+        if themeManager.current != .neo { return 1 }
+        if notchState != .collapsed { return 1 }
+        return isHovering ? 1 : 0
     }
 
     // MARK: - Expanded Content
