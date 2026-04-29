@@ -142,6 +142,8 @@ actor OpenCodeSSEClient {
             return .questionReplied(sessionID: sessionID, requestID: requestID)
 
         case "question.rejected":
+            // Treat rejection the same as a reply — both mean the question is no
+            // longer pending and should be removed from the UI queue.
             guard let sessionID = properties["sessionID"] as? String,
                   let requestID = properties["requestID"] as? String else { return nil }
             return .questionReplied(sessionID: sessionID, requestID: requestID)
