@@ -116,20 +116,6 @@ final class SessionMonitorService {
     }
 
     /// Returns the PID of the OpenCode instance that owns the given session, if known.
-    ///
-    /// Resolution order:
-    ///  1. **Authoritative**: `sessionToInstance[sessionID]`, populated when an
-    ///     SSE event arrives (busy/retry status, permission/question asked) or
-    ///     when `/session/status` reports the session as busy/retry.
-    ///  2. **Single-candidate**: if exactly one running instance shares the
-    ///     session's directory, use it.
-    ///  3. **Heuristic distribution** (multi-candidate): when N>1 instances run
-    ///     in the same directory and none has claimed this session yet, distribute
-    ///     the unmapped sessions across instances by sorted-id index. This is a
-    ///     best-effort guess — used only to pick which terminal to bring forward.
-    ///     A wrong guess just focuses an unrelated terminal; it cannot misroute
-    ///     a permission/question reply (those go through the authoritative
-    ///     mapping in `httpClientForSession`).
     func pidForSession(_ sessionID: String) -> Int32? {
         if let instanceID = sessionToInstance[sessionID] {
             return instances.first(where: { $0.id == instanceID })?.pid
@@ -140,6 +126,8 @@ final class SessionMonitorService {
         guard sameDirInstances.isEmpty == false else { return nil }
         if sameDirInstances.count == 1 { return sameDirInstances[0].pid }
 
+        // Distribute unmapped sessions across same-dir instances deterministically.
+        // Each unmapped session gets a different instance by index position.
         let unmappedSameDirSessions = activeSessions
             .filter { $0.directory == session.directory && sessionToInstance[$0.id] == nil }
             .sorted(by: { $0.id < $1.id })
@@ -187,17 +175,6 @@ final class SessionMonitorService {
                 Task { await client.disconnect() }
             }
             httpClients.removeValue(forKey: id)
-
-            // Drop in-flight requests owned by the dead instance — once the
-            // process is gone they can no longer be answered, so leaving them
-            // pending would keep the notch (and halo/heartbeat) signalling
-            // forever.
-            let orphanedSessionIDs = Set(
-                sessionToInstance.compactMap { $0.value == id ? $0.key : nil }
-            )
-            pendingPermissions.removeAll { orphanedSessionIDs.contains($0.sessionID) }
-            pendingQuestions.removeAll { orphanedSessionIDs.contains($0.sessionID) }
-
             sessionToInstance = sessionToInstance.filter { $0.value != id }
             completionDetector.removeSession(id: id)
         }
@@ -284,24 +261,16 @@ final class SessionMonitorService {
             var merged: [OCSession] = []
             for var session in sqliteSessions {
                 if let httpStatus = httpStatuses[session.id] {
-                    // HTTP authoritative: use whatever the server reports.
                     session.status = httpStatus
                 } else if httpResponded {
-                    // At least one HTTP server responded but did NOT include this
-                    // session in its statuses. Trust HTTP — the session is idle.
-                    // We deliberately ignore SQLite's `busyIDs` heuristic here
-                    // because it flags any session whose last `part` row isn't
-                    // `step-finish` as busy, which leaves sessions stuck in
-                    // "Working" indefinitely after a prompt completes.
-                    // session.status stays at SQLite default (.idle).
-                    _ = session
+                    // HTTP endpoint responded but didn't include this session —
+                    // it's not busy/retry. Use SQLite as fallback, default to idle.
+                    if busyIDs.contains(session.id) {
+                        session.status = .busy
+                    }
                 } else if let existing = activeSessions.first(where: { $0.id == session.id }) {
-                    // No HTTP server responded at all (pure TUI mode or all
-                    // instances down). Preserve previously known status.
                     session.status = existing.status
                 } else if busyIDs.contains(session.id) {
-                    // Brand-new session, no HTTP, no prior state — fall back to
-                    // SQLite hint as a best-effort signal.
                     session.status = .busy
                 }
                 merged.append(session)
@@ -317,71 +286,27 @@ final class SessionMonitorService {
 
     // MARK: - REST Polling (Permissions & Questions)
 
-    /// Reconciles `pendingPermissions` / `pendingQuestions` with the REST snapshot
-    /// from each HTTP instance, **without** discarding entries that were populated
-    /// via SSE but aren't (yet / no longer) listed by the REST endpoint.
-    ///
-    /// Per-instance merge:
-    ///  - If an instance's GET succeeds, items mapped to that instance that are
-    ///    absent from the response are treated as resolved and dropped, and any
-    ///    new items in the response are appended.
-    ///  - If an instance's GET fails (returns nil), nothing is dropped for that
-    ///    instance — SSE-populated state is preserved.
-    ///
-    /// This avoids the previous "every poll wipes pendingPermissions/Questions"
-    /// behaviour, which made requests invisible whenever the REST endpoint
-    /// returned an empty list or failed.
     private func pollPermissionsAndQuestions() async {
-        var permResponses: [String: [OCPermissionRequest]] = [:]
-        var questionResponses: [String: [OCQuestionRequest]] = [:]
+        var allPermissions: [OCPermissionRequest] = []
+        var allQuestions: [OCQuestionRequest] = []
 
         for (instanceID, httpClient) in httpClients {
-            if let perms = await httpClient.listPermissions() {
-                permResponses[instanceID] = perms
-                for p in perms { sessionToInstance[p.sessionID] = instanceID }
-            }
-            if let questions = await httpClient.listQuestions() {
-                questionResponses[instanceID] = questions
-                for q in questions { sessionToInstance[q.sessionID] = instanceID }
-            }
-        }
-
-        var newPermissions = pendingPermissions
-        for (instanceID, perms) in permResponses {
-            let respIDs = Set(perms.map(\.id))
-            // Drop locally-known items owned by this instance that are absent
-            // from its fresh response (resolved server-side).
-            newPermissions.removeAll { perm in
-                sessionToInstance[perm.sessionID] == instanceID && respIDs.contains(perm.id) == false
-            }
-            // Append any items the server reports that we don't have yet.
-            let known = Set(newPermissions.map(\.id))
-            for var perm in perms where known.contains(perm.id) == false {
-                if let session = activeSessions.first(where: { $0.id == perm.sessionID }) {
-                    perm.sessionTitle = session.title
-                }
-                newPermissions.append(perm)
-            }
-        }
-
-        var newQuestions = pendingQuestions
-        for (instanceID, questions) in questionResponses {
-            let respIDs = Set(questions.map(\.id))
-            newQuestions.removeAll { q in
-                sessionToInstance[q.sessionID] == instanceID && respIDs.contains(q.id) == false
-            }
-            let known = Set(newQuestions.map(\.id))
-            for q in questions where known.contains(q.id) == false {
-                newQuestions.append(q)
-            }
+            let perms = await httpClient.listPermissions()
+            let questions = await httpClient.listQuestions()
+            for p in perms { sessionToInstance[p.sessionID] = instanceID }
+            for q in questions { sessionToInstance[q.sessionID] = instanceID }
+            allPermissions += perms
+            allQuestions += questions
         }
 
         let now = Date()
         recentlyRepliedQuestions = recentlyRepliedQuestions.filter { $0.value > now }
         recentlyRepliedPermissions = recentlyRepliedPermissions.filter { $0.value > now }
+        allQuestions = allQuestions.filter { recentlyRepliedQuestions[$0.id] == nil }
+        allPermissions = allPermissions.filter { recentlyRepliedPermissions[$0.id] == nil }
 
-        pendingPermissions = newPermissions.filter { recentlyRepliedPermissions[$0.id] == nil }
-        pendingQuestions = newQuestions.filter { recentlyRepliedQuestions[$0.id] == nil }
+        pendingPermissions = allPermissions
+        pendingQuestions = allQuestions
     }
 
     // MARK: - Completion Handling
@@ -440,7 +365,6 @@ final class SessionMonitorService {
         case .sessionDeleted(let sessionID):
             activeSessions.removeAll { $0.id == sessionID }
             pendingPermissions.removeAll { $0.sessionID == sessionID }
-            pendingQuestions.removeAll { $0.sessionID == sessionID }
             sessionToInstance.removeValue(forKey: sessionID)
             completionDetector.removeSession(id: sessionID)
 
@@ -481,18 +405,14 @@ final class SessionMonitorService {
             if let session = activeSessions.first(where: { $0.id == request.sessionID }) {
                 request.sessionTitle = session.title
             }
-            if pendingPermissions.contains(where: { $0.id == request.id }) == false {
-                pendingPermissions.append(request)
-            }
+            pendingPermissions.append(request)
 
         case .permissionReplied(_, let requestID, _):
             pendingPermissions.removeAll { $0.id == requestID }
 
         case .questionAsked(let request):
             sessionToInstance[request.sessionID] = instanceID
-            if pendingQuestions.contains(where: { $0.id == request.id }) == false {
-                pendingQuestions.append(request)
-            }
+            pendingQuestions.append(request)
 
         case .questionReplied(_, let requestID):
             pendingQuestions.removeAll { $0.id == requestID }
