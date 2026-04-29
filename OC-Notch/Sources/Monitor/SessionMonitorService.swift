@@ -410,8 +410,12 @@ final class SessionMonitorService {
         case .permissionReplied(_, let requestID, _):
             pendingPermissions.removeAll { $0.id == requestID }
 
-        case .questionAsked:
-            Task { await self.pollPermissionsAndQuestions() }
+        case .questionAsked(let request):
+            sessionToInstance[request.sessionID] = instanceID
+            if recentlyRepliedQuestions[request.id] == nil
+                && !pendingQuestions.contains(where: { $0.id == request.id }) {
+                pendingQuestions.append(request)
+            }
 
         case .questionReplied(_, let requestID):
             pendingQuestions.removeAll { $0.id == requestID }
