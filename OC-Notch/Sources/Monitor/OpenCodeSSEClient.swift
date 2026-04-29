@@ -57,6 +57,9 @@ actor OpenCodeSSEClient {
                 if Task.isCancelled { break }
 
                 if line.hasPrefix("data: ") {
+                    if dataBuffer.isEmpty == false {
+                        dataBuffer += "\n"
+                    }
                     dataBuffer += String(line.dropFirst(6))
                 } else if line.isEmpty && dataBuffer.isEmpty == false {
                     // End of event — parse accumulated data
@@ -134,6 +137,11 @@ actor OpenCodeSSEClient {
             return .questionAsked(parseQuestionRequest(properties))
 
         case "question.replied":
+            guard let sessionID = properties["sessionID"] as? String,
+                  let requestID = properties["requestID"] as? String else { return nil }
+            return .questionReplied(sessionID: sessionID, requestID: requestID)
+
+        case "question.rejected":
             guard let sessionID = properties["sessionID"] as? String,
                   let requestID = properties["requestID"] as? String else { return nil }
             return .questionReplied(sessionID: sessionID, requestID: requestID)

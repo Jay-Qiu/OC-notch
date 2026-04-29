@@ -223,8 +223,24 @@ final class SessionMonitorService {
 
         let terminalTabs = await TerminalTabProbe.snapshot()
         for i in instances.indices {
-            guard let instanceTTY = instances[i].tty else { continue }
-            instances[i].terminalTab = terminalTabs.first(where: { $0.tty == instanceTTY })
+            // Primary: match by TTY device
+            if let instanceTTY = instances[i].tty {
+                if let tab = terminalTabs.first(where: { $0.tty == instanceTTY }) {
+                    instances[i].terminalTab = tab
+                    continue
+                }
+            }
+            // Fallback: match by directory path in window title (important for Ghostty
+            // which does not always expose TTY in its window names)
+            if let dir = instances[i].directory {
+                let dirName = (dir as NSString).lastPathComponent
+                if let tab = terminalTabs.first(where: {
+                    guard let title = $0.title else { return false }
+                    return title.contains(dir) || title.contains(dirName)
+                }) {
+                    instances[i].terminalTab = tab
+                }
+            }
         }
 
         let totalPIDs = await processScanner.countProcesses()

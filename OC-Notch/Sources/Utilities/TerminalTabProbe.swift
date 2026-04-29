@@ -74,19 +74,23 @@ enum TerminalTabProbe {
     // MARK: - Ghostty
 
     private static func snapshotGhostty() -> [TerminalTab] {
-        let sep = fieldSeparator
         let rec = recordSeparator
+
+        // Ghostty does not expose a full AppleScript dictionary, so we use
+        // System Events (Accessibility) to read window names instead of
+        // `tell application "Ghostty"` which would trigger an Automation
+        // permission prompt and likely fail.
         let script = """
             tell application "System Events"
                 if not (exists process "Ghostty") then return ""
-            end tell
-            tell application "Ghostty"
-                set output to ""
-                repeat with w in windows
-                    set wName to name of w
-                    set output to output & wName & "\(rec)"
-                end repeat
-                return output
+                tell process "Ghostty"
+                    set output to ""
+                    repeat with w in windows
+                        set wName to name of w
+                        set output to output & wName & "\(rec)"
+                    end repeat
+                    return output
+                end tell
             end tell
             """
 
@@ -97,14 +101,15 @@ enum TerminalTabProbe {
             let name = String(record)
             guard name.isEmpty == false else { continue }
 
-            // Ghostty window names often contain the TTY (e.g. "user@host: /path — ttys003")
+            // Ghostty window names may contain the TTY (e.g. "user@host: /path — ttys003")
+            // but this is not guaranteed. Include tabs even without a TTY so they can be
+            // matched by directory path later.
             let tty = extractTTY(from: name)
-            guard let tty else { continue }
 
             tabs.append(TerminalTab(
                 bundleID: "com.mitchellh.ghostty",
                 sessionID: nil,
-                tty: tty,
+                tty: tty ?? "",
                 title: name
             ))
         }
@@ -177,7 +182,21 @@ enum TerminalTabProbe {
 
         do {
             try task.run()
-            task.waitUntilExit()
+
+            // Timeout after 5 seconds to prevent blocking if macOS shows a
+            // permission dialog or the target app is unresponsive.
+            let deadline = DispatchTime.now() + .seconds(5)
+            let done = DispatchSemaphore(value: 0)
+            DispatchQueue.global().async {
+                task.waitUntilExit()
+                done.signal()
+            }
+
+            if done.wait(timeout: deadline) == .timedOut {
+                task.terminate()
+                logger.debug("AppleScript probe timed out after 5s")
+                return nil
+            }
 
             if task.terminationStatus != 0 {
                 let errData = errPipe.fileHandleForReading.readDataToEndOfFile()

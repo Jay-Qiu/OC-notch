@@ -63,13 +63,14 @@ enum TerminalLauncher {
     // MARK: - Window Focus
 
     private static func focusTerminalTab(_ tab: TerminalTab, directory: String?) {
+        let tty: String? = tab.tty.isEmpty ? nil : tab.tty
         switch tab.bundleID {
         case "com.googlecode.iterm2":
-            focusiTermWindow(iTermSessionID: tab.sessionID, tty: tab.tty, directory: directory)
+            focusiTermWindow(iTermSessionID: tab.sessionID, tty: tty, directory: directory)
         case "com.mitchellh.ghostty":
-            focusGhosttyWindow(directory: directory ?? "", tty: tab.tty)
+            focusGhosttyWindow(directory: directory ?? "", tty: tty)
         case "com.apple.Terminal":
-            focusAppleTerminalWindow(directory: directory ?? "", tty: tab.tty)
+            focusAppleTerminalWindow(directory: directory ?? "", tty: tty)
         default:
             break
         }
@@ -91,37 +92,46 @@ enum TerminalLauncher {
     private static func focusGhosttyWindow(directory: String, tty: String?) {
         let dirName = (directory as NSString).lastPathComponent
 
-        let ttyMatchBlock: String
+        // Ghostty does not expose a full AppleScript dictionary, so we use
+        // System Events (Accessibility) for window matching and rely on
+        // `activate` via NSRunningApplication (already called by the caller).
+        // The `tell application "Ghostty" / activate` call is safe because
+        // even apps without a scripting dictionary respond to `activate`.
+
+        var matchBlocks: [String] = []
+
+        // Priority 1: match by TTY in window title
         if let tty {
-            ttyMatchBlock = """
-                set targetTTY to "\(tty)"
-                repeat with w in windows
-                    set wName to name of w
-                    if wName contains targetTTY then
-                        set index of w to 1
-                        return
-                    end if
-                end repeat
-                """
-        } else {
-            ttyMatchBlock = ""
+            matchBlocks.append("""
+                tell application "System Events"
+                    tell process "Ghostty"
+                        repeat with w in windows
+                            if name of w contains "\(tty)" then
+                                perform action "AXRaise" of w
+                                return
+                            end if
+                        end repeat
+                    end tell
+                end tell
+                """)
         }
 
-        let script = """
-            tell application "Ghostty"
-                activate
-                \(ttyMatchBlock)
-                set targetDir to "\(directory)"
-                set targetName to "\(dirName)"
-                repeat with w in windows
-                    set wName to name of w
-                    if wName contains targetDir or wName contains targetName then
-                        set index of w to 1
-                        return
-                    end if
-                end repeat
+        // Priority 2: match by directory path or name in window title
+        matchBlocks.append("""
+            tell application "System Events"
+                tell process "Ghostty"
+                    repeat with w in windows
+                        set wName to name of w
+                        if wName contains "\(directory)" or wName contains "\(dirName)" then
+                            perform action "AXRaise" of w
+                            return
+                        end if
+                    end repeat
+                end tell
             end tell
-            """
+            """)
+
+        let script = matchBlocks.joined(separator: "\n")
         logger.notice("Ghostty focus: dir=\(directory) dirName=\(dirName) tty=\(tty ?? "nil")")
         runAppleScript(script)
     }
