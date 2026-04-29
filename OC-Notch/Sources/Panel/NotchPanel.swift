@@ -82,11 +82,12 @@ final class NotchPanel: NSPanel {
 // MARK: - NotchPanelController
 
 @MainActor
-final class NotchPanelController {
+final class NotchPanelController: NSObject, NSMenuDelegate {
     private var panel: NotchPanel?
     private var screenObserver: Any?
     private var stateObserver: Any?
     private var clickCatcher: ClickCatcherWindow?
+    private var themeMenuItems: [NotchTheme: NSMenuItem] = [:]
     let sessionMonitor = SessionMonitorService()
 
     private static let collapsedHeight: CGFloat = 44
@@ -106,7 +107,9 @@ final class NotchPanelController {
         hostingView.autoresizingMask = [.width, .height]
 
         panel.contentView?.addSubview(hostingView)
-        panel.contentView?.menu = buildContextMenu()
+        let menu = buildContextMenu()
+        menu.delegate = self
+        panel.contentView?.menu = menu
         panel.orderFrontRegardless()
 
         self.panel = panel
@@ -191,6 +194,10 @@ final class NotchPanelController {
         )
         menu.addItem(aboutItem)
 
+        let themeItem = NSMenuItem(title: "Thème", action: nil, keyEquivalent: "")
+        themeItem.submenu = buildThemeMenu()
+        menu.addItem(themeItem)
+
         menu.addItem(.separator())
 
         let updateItem = NSMenuItem(
@@ -210,6 +217,47 @@ final class NotchPanelController {
         menu.addItem(quitItem)
 
         return menu
+    }
+
+    private func buildThemeMenu() -> NSMenu {
+        let submenu = NSMenu(title: "Thème")
+        submenu.delegate = self
+        themeMenuItems.removeAll()
+
+        for theme in NotchTheme.allCases {
+            let item = NSMenuItem(
+                title: theme.displayName,
+                action: #selector(selectTheme(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = theme.rawValue
+            submenu.addItem(item)
+            themeMenuItems[theme] = item
+        }
+
+        refreshThemeMenuState()
+        return submenu
+    }
+
+    private func refreshThemeMenuState() {
+        let current = ThemeManager.shared.current
+        for (theme, item) in themeMenuItems {
+            item.state = (theme == current) ? .on : .off
+        }
+    }
+
+    @objc private func selectTheme(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let theme = NotchTheme(rawValue: raw) else { return }
+        ThemeManager.shared.current = theme
+        refreshThemeMenuState()
+    }
+
+    // MARK: - NSMenuDelegate
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        refreshThemeMenuState()
     }
 
     // MARK: - Panel Visibility

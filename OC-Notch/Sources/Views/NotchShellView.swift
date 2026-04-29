@@ -13,6 +13,7 @@ struct NotchShellView: View {
     @State private var notchState: NotchState = .collapsed
     @State private var isHovering = false
     @State private var clickOutsideMonitor: Any?
+    @State private var themeManager = ThemeManager.shared
     /// When `true`, auto-expand for pending permissions/questions is suppressed
     /// until the user clicks the notch bar or a *new* request arrives.
     @State private var userDismissed = false
@@ -24,6 +25,9 @@ struct NotchShellView: View {
               let leftArea = screen.auxiliaryTopLeftArea,
               let rightArea = screen.auxiliaryTopRightArea else { return 180 }
         return rightArea.minX - leftArea.maxX
+    }()
+    @State private var currentNotchHeight: CGFloat = {
+        NSScreen.targetScreen?.auxiliaryTopLeftArea?.height ?? 32
     }()
 
     var onExpandChange: ((Bool) -> Void)?
@@ -125,6 +129,7 @@ struct NotchShellView: View {
                     .padding(.leading, 8 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
+            .opacity(pillRevealOpacity)
             .frame(height: 36 * currentDisplayScale)
             .frame(maxWidth: currentNotchWidth + 100 * currentDisplayScale)
             .padding(.horizontal, 8 * currentDisplayScale)
@@ -132,11 +137,19 @@ struct NotchShellView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
                         .fill(DS.Colors.pillBackground)
+                        .opacity(pillRevealOpacity)
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
                         .fill(.ultraThinMaterial)
                         .opacity(isHovering && notchState == .collapsed ? 1 : 0)
+                    NeoHaloOverlay(
+                        state: currentHaloState,
+                        cornerRadius: DS.Radii.compactBottom,
+                        thinkingNotchSize: thinkingNotchSize
+                    )
                 }
                 .animation(DS.Animations.smooth, value: isHovering)
+                .animation(DS.Animations.smooth, value: themeManager.current)
+                .animation(DS.Animations.smooth, value: notchState)
             )
             .contentShape(RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous))
         }
@@ -144,6 +157,15 @@ struct NotchShellView: View {
         .onHover { hovering in
             isHovering = hovering
         }
+    }
+
+    /// Opacity of the visible pill (background + content). In Neo theme the pill
+    /// is hidden at rest so only the halo is visible, and reappears on hover or
+    /// when the notch is expanded.
+    private var pillRevealOpacity: Double {
+        if themeManager.current != .neo { return 1 }
+        if notchState != .collapsed { return 1 }
+        return isHovering ? 1 : 0
     }
 
     // MARK: - Expanded Content
@@ -420,6 +442,23 @@ struct NotchShellView: View {
         }
     }
 
+    // MARK: - Halo State
+
+    /// Size of the hardware notch (or a sensible default on non-notched
+    /// displays). Used to constrain the `.thinking` halo to the inner notch
+    /// shape instead of the full pill bar.
+    private var thinkingNotchSize: CGSize {
+        CGSize(width: currentNotchWidth, height: currentNotchHeight)
+    }
+
+    private var currentHaloState: NeoHaloState {
+        guard themeManager.current == .neo else { return .none }
+        if !monitor.pendingPermissions.isEmpty { return .permission }
+        if !monitor.pendingQuestions.isEmpty { return .question }
+        if monitor.activeSessions.contains(where: { $0.status == .busy }) { return .thinking }
+        return .none
+    }
+
     // MARK: - Notch Width
 
     private var pillWidth: CGFloat {
@@ -432,6 +471,7 @@ struct NotchShellView: View {
            let leftArea = screen.auxiliaryTopLeftArea,
            let rightArea = screen.auxiliaryTopRightArea {
             currentNotchWidth = rightArea.minX - leftArea.maxX
+            currentNotchHeight = leftArea.height
         }
     }
 }
