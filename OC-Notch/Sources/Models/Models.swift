@@ -168,7 +168,14 @@ struct OCInstance: Identifiable, Equatable {
 
     var terminalTab: TerminalTab? = nil
 
+    /// Built via `URLComponents` so a malformed hostname can never crash the app
+    /// (currently `hostname` is always `"127.0.0.1"`, but the type doesn't enforce it).
+    /// Falls back to loopback if the components are somehow rejected.
     var baseURL: URL {
-        URL(string: "http://\(hostname):\(port)")!
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = hostname
+        components.port = port
+        return components.url ?? URL(string: "http://127.0.0.1:\(port)") ?? URL(fileURLWithPath: "/")
     }
 }
