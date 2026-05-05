@@ -51,12 +51,12 @@ private struct ProgressingHalo: View {
             let head = phase
             let tail = max(0.0, head - 0.35)
             let stops: [Gradient.Stop] = [
-                .init(color: .clear, at: 0.0),
-                .init(color: .clear, at: max(0.0, tail - 0.001)),
-                .init(color: DS.Colors.accentGreen.opacity(0.0), at: tail),
-                .init(color: DS.Colors.accentGreen, at: head),
-                .init(color: DS.Colors.accentGreen.opacity(0.0), at: min(1.0, head + 0.001)),
-                .init(color: .clear, at: 1.0)
+                Gradient.Stop(color: .clear, location: 0.0),
+                Gradient.Stop(color: .clear, location: max(0.0, tail - 0.001)),
+                Gradient.Stop(color: DS.Colors.accentGreen.opacity(0.0), location: tail),
+                Gradient.Stop(color: DS.Colors.accentGreen, location: head),
+                Gradient.Stop(color: DS.Colors.accentGreen.opacity(0.0), location: min(1.0, head + 0.001)),
+                Gradient.Stop(color: .clear, location: 1.0)
             ]
 
             let gradient = LinearGradient(
