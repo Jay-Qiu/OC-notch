@@ -80,27 +80,31 @@ actor OpenCodeHTTPClient {
 
     // MARK: - Permission Reply
 
-    func listPermissions() async -> [OCPermissionRequest] {
+    /// Returns the pending permissions for this instance, or `nil` if the request failed
+    /// (network error, non-200, or unparseable response). A successful empty list is `[]`.
+    func listPermissions() async -> [OCPermissionRequest]? {
         let url = instance.baseURL.appendingPathComponent("permission")
         do {
             let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
-            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return [] }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return nil }
             return dicts.map { OpenCodeSSEClient.parsePermissionFromREST($0) }
         } catch {
-            return []
+            return nil
         }
     }
 
-    func listQuestions() async -> [OCQuestionRequest] {
+    /// Returns the pending questions for this instance, or `nil` if the request failed.
+    /// A successful empty list is `[]`.
+    func listQuestions() async -> [OCQuestionRequest]? {
         let url = instance.baseURL.appendingPathComponent("question")
         do {
             let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
-            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return [] }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return nil }
             return dicts.map { OpenCodeSSEClient.parseQuestionFromREST($0) }
         } catch {
-            return []
+            return nil
         }
     }
 
