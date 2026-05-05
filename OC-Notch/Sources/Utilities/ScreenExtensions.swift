@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import os.log
 
-private let scaleLog = Logger(subsystem: "com.oc-notch", category: "DisplayScale")
+private let scaleLog = Logger(subsystem: "com.oc-notch.app", category: "DisplayScale")
 
 extension NSScreen {
     /// Returns the best screen to host the notch overlay.
