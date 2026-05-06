@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updaterController = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,
-            userDriverDelegate: nil
+            userDriverDelegate: self
         )
     }
 
@@ -39,8 +39,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func checkForUpdates(_ sender: Any?) {
-        // Collapse the notch pill so Sparkle's alert isn't trapped behind it.
-        NotificationCenter.default.post(name: .notchClickedOutside, object: nil)
         updaterController?.checkForUpdates(sender)
+    }
+}
+
+// MARK: - Sparkle user-driver delegate
+
+extension AppDelegate: SPUStandardUserDriverDelegate {
+    /// Sparkle is about to show a modal alert (update prompt, error, etc.). Collapse
+    /// the always-on-top notch pill so the alert isn't trapped behind it.
+    nonisolated func standardUserDriverWillShowModalAlert() {
+        Task { @MainActor in
+            NotificationCenter.default.post(name: .notchClickedOutside, object: nil)
+        }
+    }
+
+    /// Sparkle's modal is now on screen. Bring the app forward so the alert
+    /// isn't hidden behind other windows.
+    nonisolated func standardUserDriverDidShowModalAlert() {
+        Task { @MainActor in
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first { $0.isVisible && $0.level == .normal }?.orderFrontRegardless()
+        }
     }
 }

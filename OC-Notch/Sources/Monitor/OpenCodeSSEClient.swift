@@ -33,20 +33,71 @@ actor OpenCodeSSEClient {
 
     // MARK: - Private
 
+    /// Reconnect strategy: exponential backoff up to 30s, reset on successful read.
+    /// Heartbeat watchdog: if no event (incl. `server.heartbeat`) arrives for >60s,
+    /// invalidate the URLSession to break out of the read loop and reconnect.
     private func streamEvents(continuation: AsyncStream<OCEvent>.Continuation) async {
+        var backoffSeconds: Double = 1
+        let maxBackoffSeconds: Double = 30
+
+        while Task.isCancelled == false {
+            let result = await attemptConnection(continuation: continuation)
+            if Task.isCancelled { break }
+
+            switch result {
+            case .receivedEvents:
+                backoffSeconds = 1
+            case .connectFailed, .noEventsBeforeDisconnect:
+                backoffSeconds = min(backoffSeconds * 2, maxBackoffSeconds)
+            }
+
+            try? await Task.sleep(for: .seconds(backoffSeconds))
+        }
+
+        continuation.finish()
+    }
+
+    private enum ConnectionOutcome {
+        case connectFailed
+        case noEventsBeforeDisconnect
+        case receivedEvents
+    }
+
+    private func attemptConnection(continuation: AsyncStream<OCEvent>.Continuation) async -> ConnectionOutcome {
+        let session = URLSession(configuration: .default)
+        defer { session.invalidateAndCancel() }
+
         let url = instance.baseURL.appendingPathComponent("global/event")
         var request = URLRequest(url: url)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        if let token = OpenCodeAuth.bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.timeoutInterval = .infinity
 
+        let watchdog = HeartbeatWatchdog(stalenessSeconds: 60)
+        let watchdogTask = Task { [weak session] in
+            while Task.isCancelled == false {
+                try? await Task.sleep(for: .seconds(15))
+                if Task.isCancelled { return }
+                if await watchdog.isStale() {
+                    logger.warning("SSE heartbeat stale — forcing reconnect")
+                    session?.invalidateAndCancel()
+                    return
+                }
+            }
+        }
+        defer { watchdogTask.cancel() }
+
+        var sawEvent = false
+
         do {
-            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            let (bytes, response) = try await session.bytes(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
                 logger.error("SSE connection failed: bad response")
-                continuation.finish()
-                return
+                return .connectFailed
             }
 
             logger.notice("SSE connected to \(self.instance.baseURL)")
@@ -55,12 +106,13 @@ actor OpenCodeSSEClient {
 
             for try await line in bytes.lines {
                 if Task.isCancelled { break }
+                await watchdog.touch()
 
                 if line.hasPrefix("data: ") {
                     dataBuffer += String(line.dropFirst(6))
                 } else if line.isEmpty && dataBuffer.isEmpty == false {
-                    // End of event — parse accumulated data
                     if let event = parseEvent(json: dataBuffer) {
+                        sawEvent = true
                         continuation.yield(event)
                     }
                     dataBuffer = ""
@@ -70,9 +122,10 @@ actor OpenCodeSSEClient {
             if Task.isCancelled == false {
                 logger.error("SSE stream error: \(error)")
             }
+            return sawEvent ? .receivedEvents : .connectFailed
         }
 
-        continuation.finish()
+        return sawEvent ? .receivedEvents : .noEventsBeforeDisconnect
     }
 
     // MARK: - Event Parsing

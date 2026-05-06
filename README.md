@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Your AI agent lives in the notch now.</strong><br/>
-  A Dynamic Island–inspired companion for <a href="https://github.com/nicepkg/OpenCode">OpenCode</a> that turns your MacBook's dead pixel real estate into a living, breathing command center for AI coding sessions.
+  A Dynamic Island–inspired companion for <a href="https://github.com/sst/opencode">OpenCode</a> that turns your MacBook's dead pixel real estate into a living, breathing command center for AI coding sessions.
 </p>
 
 <p align="center">
@@ -78,7 +78,7 @@ open OC-Notch.xcodeproj
 
 ### Use It
 
-1. Start [OpenCode](https://github.com/nicepkg/OpenCode) in any terminal
+1. Start [OpenCode](https://github.com/sst/opencode) in any terminal
 2. Launch OC-Notch — it auto-discovers running instances via process scanning
 3. Hover the notch to peek at status, click to expand the dashboard
 4. Handle permissions & questions directly from the notch with keyboard shortcuts
@@ -119,6 +119,16 @@ OpenCode Process ──→ SSE Stream ──→ OC-Notch
 
 OC-Notch discovers OpenCode instances by scanning running processes, connects via **Server-Sent Events** for real-time updates, reads session data from **SQLite**, and responds to permissions/questions through the **HTTP API**. All local. No cloud. No telemetry.
 
+### Authenticated OpenCode servers (optional)
+
+If you run OpenCode with `OPENCODE_SERVER_PASSWORD` set, OC-Notch will pick it up and send `Authorization: Bearer …` on every request. Because macOS GUI apps launched from the Dock don't inherit `~/.zshrc`, set the var so launchd sees it:
+
+```bash
+launchctl setenv OPENCODE_SERVER_PASSWORD <your-password>
+```
+
+Then relaunch OC-Notch. To unset: `launchctl unsetenv OPENCODE_SERVER_PASSWORD`.
+
 ---
 
 ## Tech Stack
@@ -127,7 +137,7 @@ OC-Notch discovers OpenCode instances by scanning running processes, connects vi
 |---|---|
 | **Language** | Swift 6 with strict concurrency |
 | **UI** | SwiftUI + SpriteKit (avatar) |
-| **Window** | AppKit `NSPanel` overlay — no dock icon, no menu bar clutter |
+| **Window** | AppKit `NSPanel` overlay around the hardware notch |
 | **Networking** | Native `URLSession` SSE client |
 | **Storage** | Direct SQLite reader (no ORM overhead) |
 | **Build** | XcodeGen + Makefile release pipeline |
@@ -170,7 +180,7 @@ OC-Notch/Sources/
 ## Acknowledgments
 
 - [DynamicNotchKit](https://github.com/MrKai77/DynamicNotchKit) — blur transition design inspiration
-- [OpenCode](https://github.com/nicepkg/OpenCode) — the AI coding agent this project is built for
+- [OpenCode](https://github.com/sst/opencode) — the AI coding agent this project is built for
 
 ---
 
