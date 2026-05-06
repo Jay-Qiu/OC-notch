@@ -47,12 +47,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: SPUStandardUserDriverDelegate {
     /// Sparkle is about to show a modal alert (update prompt, error, etc.). Collapse
-    /// the always-on-top notch pill so the alert isn't trapped behind it, and bring
-    /// the app forward (LSUIElement apps don't auto-activate for modals).
+    /// the always-on-top notch pill so the alert isn't trapped behind it.
     nonisolated func standardUserDriverWillShowModalAlert() {
         Task { @MainActor in
             NotificationCenter.default.post(name: .notchClickedOutside, object: nil)
+        }
+    }
+
+    /// Sparkle's modal is now on screen. Bring the app forward so the alert
+    /// isn't hidden behind other windows.
+    nonisolated func standardUserDriverDidShowModalAlert() {
+        Task { @MainActor in
             NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first { $0.isVisible && $0.level == .normal }?.orderFrontRegardless()
         }
     }
 }
