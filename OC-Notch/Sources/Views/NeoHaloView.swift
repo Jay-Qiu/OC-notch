@@ -68,7 +68,7 @@ private struct ProgressingHalo: View {
     let cycleSeconds: Double
 
     var body: some View {
-        TimelineView(.animation) { context in
+        TimelineView(.animation) { (context: TimelineViewDefaultContext) in
             let t = context.date.timeIntervalSinceReferenceDate
             let phase = (t.truncatingRemainder(dividingBy: cycleSeconds)) / cycleSeconds
 
@@ -106,7 +106,7 @@ private struct FlashingHalo: View {
     let cornerRadius: CGFloat
 
     var body: some View {
-        TimelineView(.animation) { context in
+        TimelineView(.animation) { (context: TimelineViewDefaultContext) in
             let t = context.date.timeIntervalSinceReferenceDate
             let frequency = 2.2
             let raw = sin(t * 2 * .pi * frequency)
