@@ -12,12 +12,22 @@ actor OpenCodeHTTPClient {
         self.instance = instance
     }
 
+    // MARK: - Request Building
+
+    private func authorizedRequest(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        if let token = OpenCodeAuth.bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return request
+    }
+
     // MARK: - Health
 
     func healthCheck() async -> Bool {
         let url = instance.baseURL.appendingPathComponent("global/health")
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(for: authorizedRequest(url))
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return false }
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 return json["healthy"] as? Bool ?? false
@@ -35,7 +45,7 @@ actor OpenCodeHTTPClient {
     func getSessionStatuses() async -> [String: OCSessionStatus]? {
         let url = instance.baseURL.appendingPathComponent("session/status")
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(for: authorizedRequest(url))
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
 
@@ -68,7 +78,7 @@ actor OpenCodeHTTPClient {
     func listSessions() async -> [OCSession] {
         let url = instance.baseURL.appendingPathComponent("session")
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(for: authorizedRequest(url))
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
             guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return [] }
             return dicts.map { SessionMonitorService.parseSessionFromREST($0) }
@@ -85,7 +95,7 @@ actor OpenCodeHTTPClient {
     func listPermissions() async -> [OCPermissionRequest]? {
         let url = instance.baseURL.appendingPathComponent("permission")
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(for: authorizedRequest(url))
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return nil }
             return dicts.map { OpenCodeSSEClient.parsePermissionFromREST($0) }
@@ -99,7 +109,7 @@ actor OpenCodeHTTPClient {
     func listQuestions() async -> [OCQuestionRequest]? {
         let url = instance.baseURL.appendingPathComponent("question")
         do {
-            let (data, response) = try await session.data(from: url)
+            let (data, response) = try await session.data(for: authorizedRequest(url))
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             guard let dicts = (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) else { return nil }
             return dicts.map { OpenCodeSSEClient.parseQuestionFromREST($0) }
@@ -108,28 +118,15 @@ actor OpenCodeHTTPClient {
         }
     }
 
-    /// Reply to a permission request.
-    /// The reply mechanism uses SSE or a specific endpoint. Based on the OpenAPI spec,
-    /// permission replies go through the event system. We may need to find the correct
-    /// endpoint by inspecting the web client behavior.
-    ///
-    /// For now, we attempt POST to a permission reply endpoint.
+    /// Reply to a permission request via `POST /permission/:id/reply` with body
+    /// `{ reply: "once" | "always" | "reject" }` (per OpenCode upstream `permission.ts`).
     func replyPermission(requestID: String, reply: PermissionReply) async throws {
-        // The OpenAPI spec shows permission.replied event but no explicit REST endpoint
-        // for replying. The web UI likely uses a websocket or specific endpoint.
-        // We'll need to investigate the actual mechanism.
-        //
-        // Possible endpoints to try:
-        // POST /permission/{requestID}/reply
-        // or the reply might go through a different channel
-
-        // Attempt the most likely endpoint pattern
         let url = instance.baseURL
             .appendingPathComponent("permission")
             .appendingPathComponent(requestID)
             .appendingPathComponent("reply")
 
-        var request = URLRequest(url: url)
+        var request = authorizedRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -151,13 +148,16 @@ actor OpenCodeHTTPClient {
 
     // MARK: - Question Reply
 
+    /// Reply to a question via `POST /question/:id/reply` with body
+    /// `{ answers: [[String]] }` — outer array is per question in the request,
+    /// inner array is the selected option labels (per OpenCode upstream `question.ts`).
     func replyQuestion(requestID: String, answers: [[String]]) async throws {
         let url = instance.baseURL
             .appendingPathComponent("question")
             .appendingPathComponent(requestID)
             .appendingPathComponent("reply")
 
-        var request = URLRequest(url: url)
+        var request = authorizedRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 

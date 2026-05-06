@@ -116,6 +116,20 @@ final class SessionMonitorService {
     }
 
     /// Returns the PID of the OpenCode instance that owns the given session, if known.
+    ///
+    /// Resolution order:
+    ///  1. **Authoritative**: `sessionToInstance[sessionID]`, populated when an
+    ///     SSE event arrives (busy/retry status, permission/question asked) or
+    ///     when `/session/status` reports the session as busy/retry.
+    ///  2. **Single-candidate**: if exactly one running instance shares the
+    ///     session's directory, use it.
+    ///  3. **Heuristic distribution** (multi-candidate): when N>1 instances run
+    ///     in the same directory and none has claimed this session yet, distribute
+    ///     the unmapped sessions across instances by sorted-id index. This is a
+    ///     best-effort guess — used only to pick which terminal to bring forward.
+    ///     A wrong guess just focuses an unrelated terminal; it cannot misroute
+    ///     a permission/question reply (those go through the authoritative
+    ///     mapping in `httpClientForSession`).
     func pidForSession(_ sessionID: String) -> Int32? {
         if let instanceID = sessionToInstance[sessionID] {
             return instances.first(where: { $0.id == instanceID })?.pid
@@ -126,8 +140,6 @@ final class SessionMonitorService {
         guard sameDirInstances.isEmpty == false else { return nil }
         if sameDirInstances.count == 1 { return sameDirInstances[0].pid }
 
-        // Distribute unmapped sessions across same-dir instances deterministically.
-        // Each unmapped session gets a different instance by index position.
         let unmappedSameDirSessions = activeSessions
             .filter { $0.directory == session.directory && sessionToInstance[$0.id] == nil }
             .sorted(by: { $0.id < $1.id })
