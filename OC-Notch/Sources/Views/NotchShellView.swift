@@ -453,6 +453,7 @@ struct NotchShellView: View {
 
     private var currentHaloState: NeoHaloState {
         guard themeManager.current == .neo else { return .none }
+        guard notchState == .collapsed else { return .none }
         if !monitor.pendingPermissions.isEmpty { return .permission }
         if !monitor.pendingQuestions.isEmpty { return .question }
         if monitor.activeSessions.contains(where: { $0.status == .busy }) { return .thinking }
