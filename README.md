@@ -137,7 +137,7 @@ Then relaunch OC-Notch. To unset: `launchctl unsetenv OPENCODE_SERVER_PASSWORD`.
 |---|---|
 | **Language** | Swift 6 with strict concurrency |
 | **UI** | SwiftUI + SpriteKit (avatar) |
-| **Window** | AppKit `NSPanel` overlay — no dock icon, no menu bar clutter |
+| **Window** | AppKit `NSPanel` overlay around the hardware notch |
 | **Networking** | Native `URLSession` SSE client |
 | **Storage** | Direct SQLite reader (no ORM overhead) |
 | **Build** | XcodeGen + Makefile release pipeline |
