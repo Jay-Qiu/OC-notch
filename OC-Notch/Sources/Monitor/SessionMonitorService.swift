@@ -187,6 +187,17 @@ final class SessionMonitorService {
                 Task { await client.disconnect() }
             }
             httpClients.removeValue(forKey: id)
+
+            // Drop in-flight requests owned by the dead instance — once the
+            // process is gone they can no longer be answered, so leaving them
+            // pending would keep the notch (and halo/heartbeat) signalling
+            // forever.
+            let orphanedSessionIDs = Set(
+                sessionToInstance.compactMap { $0.value == id ? $0.key : nil }
+            )
+            pendingPermissions.removeAll { orphanedSessionIDs.contains($0.sessionID) }
+            pendingQuestions.removeAll { orphanedSessionIDs.contains($0.sessionID) }
+
             sessionToInstance = sessionToInstance.filter { $0.value != id }
             completionDetector.removeSession(id: id)
         }
@@ -429,6 +440,7 @@ final class SessionMonitorService {
         case .sessionDeleted(let sessionID):
             activeSessions.removeAll { $0.id == sessionID }
             pendingPermissions.removeAll { $0.sessionID == sessionID }
+            pendingQuestions.removeAll { $0.sessionID == sessionID }
             sessionToInstance.removeValue(forKey: sessionID)
             completionDetector.removeSession(id: sessionID)
 
