@@ -291,8 +291,8 @@ final class SessionMonitorService {
         var allQuestions: [OCQuestionRequest] = []
 
         for (instanceID, httpClient) in httpClients {
-            let perms = await httpClient.listPermissions()
-            let questions = await httpClient.listQuestions()
+            let perms = await httpClient.listPermissions() ?? []
+            let questions = await httpClient.listQuestions() ?? []
             for p in perms { sessionToInstance[p.sessionID] = instanceID }
             for q in questions { sessionToInstance[q.sessionID] = instanceID }
             allPermissions += perms

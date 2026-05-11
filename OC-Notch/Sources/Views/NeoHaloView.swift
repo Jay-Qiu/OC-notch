@@ -15,6 +15,16 @@ struct NeoHaloOverlay: View {
     /// full pill bar. Used by states (`thinking`, `question`) where the halo
     /// should hug the actual notch outline.
     var notchHardwareSize: CGSize? = nil
+    /// Alias for compatibility with call sites using `notchSize`.
+    var notchSize: CGSize? {
+        get { notchHardwareSize }
+    }
+
+    init(state: NeoHaloState, cornerRadius: CGFloat, notchHardwareSize: CGSize? = nil, notchSize: CGSize? = nil) {
+        self.state = state
+        self.cornerRadius = cornerRadius
+        self.notchHardwareSize = notchHardwareSize ?? notchSize
+    }
 
     var body: some View {
         Group {
