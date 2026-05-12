@@ -78,9 +78,9 @@ enum DS {
         /// Expanded card outer corners (bottom)
         static let expandedBottom: CGFloat = 24
         /// Compact/collapsed pill corners (top)
-        static let compactTop: CGFloat = 6
+        static let compactTop: CGFloat = 0
         /// Compact/collapsed pill corners (bottom)
-        static let compactBottom: CGFloat = 14
+        static let compactBottom: CGFloat = 20
         /// Inner card / code block corners
         static let innerCard: CGFloat = 10
         /// Small element corners (badges, buttons)
