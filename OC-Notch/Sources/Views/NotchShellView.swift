@@ -27,7 +27,7 @@ struct NotchShellView: View {
         return rightArea.minX - leftArea.maxX
     }()
     @State private var currentNotchHeight: CGFloat = {
-        NSScreen.targetScreen?.auxiliaryTopLeftArea?.height ?? 32
+        NSScreen.targetScreen?.auxiliaryTopLeftArea?.height ?? 100
     }()
 
     var onExpandChange: ((Bool) -> Void)?
@@ -110,6 +110,13 @@ struct NotchShellView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
             updateScreenMetrics()
         }
+        #if DEBUG
+        .onReceive(Timer.publish(every: 4, on: .main, in: .common).autoconnect()) { _ in
+            withAnimation(DS.Animations.smooth) {
+                mockHaloIndex = (mockHaloIndex + 1) % Self.mockHaloStates.count
+            }
+        }
+        #endif
     }
 
     // MARK: - Notch Bar
@@ -129,7 +136,9 @@ struct NotchShellView: View {
                     .padding(.leading, 8 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .opacity(pillRevealOpacity)
+            .opacity(contentRevealOpacity)
+            .animation(DS.Animations.smooth, value: isHovering)
+            .animation(DS.Animations.smooth, value: notchState)
             .frame(height: 36 * currentDisplayScale)
             .frame(maxWidth: currentNotchWidth + 100 * currentDisplayScale)
             .padding(.horizontal, 8 * currentDisplayScale)
@@ -141,16 +150,22 @@ struct NotchShellView: View {
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
                         .fill(.ultraThinMaterial)
                         .opacity(isHovering && notchState == .collapsed ? 1 : 0)
-                    NeoHaloOverlay(
-                        state: currentHaloState,
-                        cornerRadius: DS.Radii.compactBottom,
-                        notchHardwareSize: notchHardwareSize
-                    )
                 }
                 .animation(DS.Animations.smooth, value: isHovering)
                 .animation(DS.Animations.smooth, value: themeManager.current)
                 .animation(DS.Animations.smooth, value: notchState)
             )
+            .overlay {
+                NeoHaloOverlay(
+                    state: currentHaloState,
+                    cornerRadius: DS.Radii.compactBottom,
+                    notchSize: notchHaloSize
+                )
+                .offset(y: -2)
+                .animation(DS.Animations.smooth, value: isHovering)
+                .animation(DS.Animations.smooth, value: themeManager.current)
+                .animation(DS.Animations.smooth, value: notchState)
+            }
             .contentShape(RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -159,7 +174,15 @@ struct NotchShellView: View {
         }
     }
 
-    /// Opacity of the visible pill (background + content). In Neo theme the pill
+    /// Opacity of the pill content (avatar + session counter). In Neo theme,
+    /// hidden at rest and revealed on hover or when the notch is expanded.
+    private var contentRevealOpacity: Double {
+        if themeManager.current != .neo { return 1 }
+        if notchState != .collapsed { return 1 }
+        return isHovering ? 1 : 0
+    }
+
+    /// Opacity of the visible pill background. In Neo theme the pill
     /// is hidden at rest so only the halo is visible, and reappears on hover or
     /// when the notch is expanded.
     private var pillRevealOpacity: Double {
@@ -447,17 +470,25 @@ struct NotchShellView: View {
     /// Size of the hardware notch (or a sensible default on non-notched
     /// displays). Used to constrain the `.thinking` halo to the inner notch
     /// shape instead of the full pill bar.
-    private var notchHardwareSize: CGSize {
-        CGSize(width: currentNotchWidth, height: currentNotchHeight)
+    private var notchHaloSize: CGSize {
+        CGSize(width: currentNotchWidth + 22, height: currentNotchHeight + 13)
     }
+
+    // MARK: - Design Mock (cycle through halo states)
+    @State private var mockHaloIndex = 0
+    private static let mockHaloStates: [NeoHaloState] = [.none, .thinking, .permission, .question]
 
     private var currentHaloState: NeoHaloState {
         guard themeManager.current == .neo else { return .none }
-        guard notchState == .collapsed else { return .none }
+
+        #if DEBUG
+        return Self.mockHaloStates[mockHaloIndex % Self.mockHaloStates.count]
+        #else
         if !monitor.pendingPermissions.isEmpty { return .permission }
         if !monitor.pendingQuestions.isEmpty { return .question }
         if monitor.activeSessions.contains(where: { $0.status == .busy }) { return .thinking }
         return .none
+        #endif
     }
 
     // MARK: - Notch Width

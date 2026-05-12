@@ -143,9 +143,14 @@ enum TerminalLauncher {
                     repeat with t in tabs of w
                         repeat with s in sessions of t
                             if (id of s as text) is "\(iTermSessionID)" then
-                                select t
-                                select s
+                                tell w
+                                    set current tab to t
+                                end tell
+                                tell t
+                                    set current session to s
+                                end tell
                                 set index of w to 1
+                                activate
                                 return
                             end if
                         end repeat
@@ -160,9 +165,14 @@ enum TerminalLauncher {
                     repeat with t in tabs of w
                         repeat with s in sessions of t
                             if tty of s is "\(tty)" then
-                                select t
-                                select s
+                                tell w
+                                    set current tab to t
+                                end tell
+                                tell t
+                                    set current session to s
+                                end tell
                                 set index of w to 1
+                                activate
                                 return
                             end if
                         end repeat
@@ -178,9 +188,14 @@ enum TerminalLauncher {
                         repeat with s in sessions of t
                             set sName to name of s
                             if sName contains "\(normalizedDir)" or sName contains "\(dirName)" then
-                                select t
-                                select s
+                                tell w
+                                    set current tab to t
+                                end tell
+                                tell t
+                                    set current session to s
+                                end tell
                                 set index of w to 1
+                                activate
                                 return
                             end if
                         end repeat
