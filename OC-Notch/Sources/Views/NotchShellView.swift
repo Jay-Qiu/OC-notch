@@ -61,6 +61,19 @@ struct NotchShellView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .top) {
+            NeoHaloOverlay(
+                state: currentHaloState,
+                cornerRadius: DS.Radii.compactBottom,
+                notchSize: notchHaloSize
+            )
+            .frame(height: 36 * currentDisplayScale + 3)
+            .clipped()
+            .offset(y: -2)
+            .animation(DS.Animations.smooth, value: themeManager.current)
+            .animation(DS.Animations.smooth, value: notchState)
+            .allowsHitTesting(false)
+        }
         .animation(notchState == .collapsed ? DS.Animations.close : DS.Animations.open, value: notchState)
         .onChange(of: monitor.pendingPermissions) { _, newPerms in
             syncPermissionQueue(newPerms)
@@ -129,7 +142,9 @@ struct NotchShellView: View {
                     .padding(.leading, 8 * currentDisplayScale)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .opacity(pillRevealOpacity)
+            .opacity(contentRevealOpacity)
+            .animation(DS.Animations.smooth, value: isHovering)
+            .animation(DS.Animations.smooth, value: notchState)
             .frame(height: 36 * currentDisplayScale)
             .frame(maxWidth: currentNotchWidth + 100 * currentDisplayScale)
             .padding(.horizontal, 8 * currentDisplayScale)
@@ -141,11 +156,6 @@ struct NotchShellView: View {
                     RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous)
                         .fill(.ultraThinMaterial)
                         .opacity(isHovering && notchState == .collapsed ? 1 : 0)
-                    NeoHaloOverlay(
-                        state: currentHaloState,
-                        cornerRadius: DS.Radii.compactBottom,
-                        notchHardwareSize: notchHardwareSize
-                    )
                 }
                 .animation(DS.Animations.smooth, value: isHovering)
                 .animation(DS.Animations.smooth, value: themeManager.current)
@@ -159,7 +169,15 @@ struct NotchShellView: View {
         }
     }
 
-    /// Opacity of the visible pill (background + content). In Neo theme the pill
+    /// Opacity of the pill content (avatar + session counter). In Neo theme,
+    /// hidden at rest and revealed on hover or when the notch is expanded.
+    private var contentRevealOpacity: Double {
+        if themeManager.current != .neo { return 1 }
+        if notchState != .collapsed { return 1 }
+        return isHovering ? 1 : 0
+    }
+
+    /// Opacity of the visible pill background. In Neo theme the pill
     /// is hidden at rest so only the halo is visible, and reappears on hover or
     /// when the notch is expanded.
     private var pillRevealOpacity: Double {
@@ -447,13 +465,12 @@ struct NotchShellView: View {
     /// Size of the hardware notch (or a sensible default on non-notched
     /// displays). Used to constrain the `.thinking` halo to the inner notch
     /// shape instead of the full pill bar.
-    private var notchHardwareSize: CGSize {
-        CGSize(width: currentNotchWidth, height: currentNotchHeight)
+    private var notchHaloSize: CGSize {
+        CGSize(width: currentNotchWidth + 22, height: currentNotchHeight + 13)
     }
 
     private var currentHaloState: NeoHaloState {
         guard themeManager.current == .neo else { return .none }
-        guard notchState == .collapsed else { return .none }
         if !monitor.pendingPermissions.isEmpty { return .permission }
         if !monitor.pendingQuestions.isEmpty { return .question }
         if monitor.activeSessions.contains(where: { $0.status == .busy }) { return .thinking }

@@ -39,7 +39,7 @@ final class ThemeManager {
            let stored = NotchTheme(rawValue: raw) {
             self.current = stored
         } else {
-            self.current = .classic
+            self.current = .neo
         }
     }
 }
