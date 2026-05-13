@@ -27,7 +27,7 @@ struct NotchShellView: View {
         return rightArea.minX - leftArea.maxX
     }()
     @State private var currentNotchHeight: CGFloat = {
-        NSScreen.targetScreen?.auxiliaryTopLeftArea?.height ?? 100
+        NSScreen.targetScreen?.auxiliaryTopLeftArea?.height ?? 32
     }()
 
     var onExpandChange: ((Bool) -> Void)?
@@ -61,6 +61,19 @@ struct NotchShellView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .top) {
+            NeoHaloOverlay(
+                state: currentHaloState,
+                cornerRadius: DS.Radii.compactBottom,
+                notchSize: notchHaloSize
+            )
+            .frame(height: 36 * currentDisplayScale + 3)
+            .clipped()
+            .offset(y: -2)
+            .animation(DS.Animations.smooth, value: themeManager.current)
+            .animation(DS.Animations.smooth, value: notchState)
+            .allowsHitTesting(false)
+        }
         .animation(notchState == .collapsed ? DS.Animations.close : DS.Animations.open, value: notchState)
         .onChange(of: monitor.pendingPermissions) { _, newPerms in
             syncPermissionQueue(newPerms)
@@ -110,13 +123,6 @@ struct NotchShellView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
             updateScreenMetrics()
         }
-        #if DEBUG
-        .onReceive(Timer.publish(every: 4, on: .main, in: .common).autoconnect()) { _ in
-            withAnimation(DS.Animations.smooth) {
-                mockHaloIndex = (mockHaloIndex + 1) % Self.mockHaloStates.count
-            }
-        }
-        #endif
     }
 
     // MARK: - Notch Bar
@@ -155,17 +161,6 @@ struct NotchShellView: View {
                 .animation(DS.Animations.smooth, value: themeManager.current)
                 .animation(DS.Animations.smooth, value: notchState)
             )
-            .overlay {
-                NeoHaloOverlay(
-                    state: currentHaloState,
-                    cornerRadius: DS.Radii.compactBottom,
-                    notchSize: notchHaloSize
-                )
-                .offset(y: -2)
-                .animation(DS.Animations.smooth, value: isHovering)
-                .animation(DS.Animations.smooth, value: themeManager.current)
-                .animation(DS.Animations.smooth, value: notchState)
-            }
             .contentShape(RoundedRectangle(cornerRadius: DS.Radii.compactBottom, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -474,21 +469,12 @@ struct NotchShellView: View {
         CGSize(width: currentNotchWidth + 22, height: currentNotchHeight + 13)
     }
 
-    // MARK: - Design Mock (cycle through halo states)
-    @State private var mockHaloIndex = 0
-    private static let mockHaloStates: [NeoHaloState] = [.none, .thinking, .permission, .question]
-
     private var currentHaloState: NeoHaloState {
         guard themeManager.current == .neo else { return .none }
-
-        #if DEBUG
-        return Self.mockHaloStates[mockHaloIndex % Self.mockHaloStates.count]
-        #else
         if !monitor.pendingPermissions.isEmpty { return .permission }
         if !monitor.pendingQuestions.isEmpty { return .question }
         if monitor.activeSessions.contains(where: { $0.status == .busy }) { return .thinking }
         return .none
-        #endif
     }
 
     // MARK: - Notch Width
